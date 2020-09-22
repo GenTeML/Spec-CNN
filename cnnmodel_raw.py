@@ -67,7 +67,9 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
     drop=hyperparameters[2]
     epochs=hyperparameters[3]
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',id_val+'val_outputs.csv'),K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
+                                  id_val+'val_outputs.csv'),
+               K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
   else:
     callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
 
@@ -209,3 +211,24 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
+def cwt_cnn_model(fin_path=r'Data/Raw Data/Continuous Wavelet Transformation/Labeled/',
+         mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,
+         hyperparameters=None,fast=True,fil_id='0',use_trash=False,threshold=.98,
+         raw=False):
+
+  #build dataframes for all data after splitting
+  X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
+                                          directory=directory,use_trash=use_trash,raw=raw)
+
+  #train a cnn model - v0.01
+  cnn_model,cnn_hist=cnn_raw.train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
+  pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
+
+  #test cnn model with dev set
+  cnn_raw.test_cnn_model(cnn_model,X_dev,y_dev,test=False,threshold=threshold)
+
+  #save model
+  if not fast:
+    cnn_raw.save_model(cnn_model,mout_path+fil_id)
+
+  return cnn_model
