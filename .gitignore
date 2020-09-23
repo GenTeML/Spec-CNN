@@ -3,3 +3,5 @@
 __pycache__/
 
 Data/
+
+.DS_Store
