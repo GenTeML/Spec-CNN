@@ -12,7 +12,10 @@ from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization
 from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 
-class PredictionCallback(tf.keras.callbacks.Callback):    
+class PredictionCallback(tf.keras.callbacks.Callback):
+    ''' 
+    Callback to output list of predictions of all training and dev data to a file after each epoch 
+    '''
   def __init__(self,train_data,validation_data,y_train,y_dev,train,val):
     self.validation_data=validation_data
     self.train_data=train_data
