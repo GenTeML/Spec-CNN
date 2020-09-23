@@ -13,8 +13,8 @@ from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 
 class PredictionCallback(tf.keras.callbacks.Callback):
-  ''' 
-  Callback to output list of predictions of all training and dev data to a file after each epoch 
+  '''
+  Callback to output list of predictions of all training and dev data to a file after each epoch
   '''
   def __init__(self,train_data,validation_data,y_train,y_dev,train,val):
     self.validation_data=validation_data
@@ -43,12 +43,12 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
 
   Args:
     X_train: DataFrame or ndarray of training set input features
-    y_train: DataFrame or Series of labels for the X_train samples, must be in 
+    y_train: DataFrame or Series of labels for the X_train samples, must be in
       the same order as X_train samples
     X_dev: DataFrame or ndarray of dev set input features
-    y_dev: DataFrame or Series of labels for the X_dev samples, must be in the 
+    y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
       same order as the X_train samples
-    hyperparameters: an array of hyperparameters in the order: lr (learning 
+    hyperparameters: an array of hyperparameters in the order: lr (learning
       rate)(default 0.001), batch size (default 100), drop (dropout rate)
       (default 0.55), epochs (default 100) - this will be updated in a future
       state after the current deadline (5/25/2020)
@@ -96,7 +96,7 @@ def layer_CBnAP(X_in,nfilters,size_C,s_C,size_P,lnum):
 def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   mout_path=r'Model Data/CNN Model/'
   #build a CNN and return untrained model given X and y shapes
-  
+
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
   X_input=Input((X_shape[1],1))
@@ -162,12 +162,12 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
   y_pred=model.predict(X_test,batch_size=1)
   #import numpy as np
   #print('\n\ny_pred\n\n',y_pred,'\n\n',y_pred.shape,'\n\n',np.amax(y_pred,axis=1))
-  
+
   #confusion matrix
   #report confusion matrix
   confmat=build_confmat(y_test,y_pred,threshold)
   display(confmat)
-  
+
   if not fast:
     if test:
       id_val=id_val+'test'
@@ -175,7 +175,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
       id_val=id_val+'validation'
     #save confusion matrix as csv to drive
     confmatout_path=r'Model Data/CNN Model/'+id_val
-  
+
     confmat.to_csv(confmatout_path+r'confmat.csv')
     #save output weights
     pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
@@ -185,7 +185,7 @@ def save_model(model,mout_path):
   print('model saved')
 
 def dec_pred(y_pred,threshold=0.95):
-  """takes prediction weights and applies a decision threshold to deterime the 
+  """takes prediction weights and applies a decision threshold to deterime the
   predicted class for each sample
 
   Args:
@@ -193,7 +193,7 @@ def dec_pred(y_pred,threshold=0.95):
     threshold: the determination threshold at which the model makes a prediction
 
   Returns:
-    a 1-d array of class predictions, unknown classes are returned as class 6 
+    a 1-d array of class predictions, unknown classes are returned as class 6
     """
   import numpy as np
   probs_ls=np.amax(y_pred,axis=1)
@@ -224,14 +224,14 @@ def raw_cnn_model(fin_path=r'Data/Raw Data/Continuous Wavelet Transformation/Lab
                                           use_trash=use_trash,raw=raw)
 
   #train a cnn model - v0.01
-  cnn_model,cnn_hist=cnn_raw.train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
+  cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
   pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
 
   #test cnn model with dev set
-  cnn_raw.test_cnn_model(cnn_model,X_dev,y_dev,test=False,threshold=threshold)
+  test_cnn_model(cnn_model,X_dev,y_dev,test=False,threshold=threshold)
 
   #save model
   if not fast:
-    cnn_raw.save_model(cnn_model,mout_path+fil_id)
+    save_model(cnn_model,mout_path+fil_id)
 
   return cnn_model
