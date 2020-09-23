@@ -6,14 +6,13 @@ Contains functions for managing, shaping, and modifying data or analysis
 import numpy as np
 import pandas as pd
 
-def fnamelsbuilder(fin_path,synth=False,directory='/content/drive/My Drive/ML Spectroscopy/',use_trash=False,test=False):
+def fnamelsbuilder(fin_path,synth=False,use_trash=False,test=False):
   """Build a list of files in directory 'fin_path'.
 
   Args:
     fin_path: a string providing the path to the folder with the intended files
     synth: a boolean, if True then all files will be pulled including synthetic
       data files. Use True if importing RRUFF data. 
-    directory: string, the base directory of the project
       
       In order to avoid unexpected behavior, ensure the fin_path folder only 
       contains training data files and no file names include _r or _ds unless 
@@ -27,21 +26,21 @@ def fnamelsbuilder(fin_path,synth=False,directory='/content/drive/My Drive/ML Sp
   from os.path import isfile, join
   if test:
     #return file names that contain "_test_"
-    return [f for f in listdir(directory+fin_path) if isfile(directory+join(fin_path,f)) and ('_test_' in f)]
+    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and ('_test_' in f)]
   if synth:
     if use_trash:
       #returns all file names
       return [f for f in listdir(fin_path) if isfile(join(fin_path,f))]
     else:
       #return all file names that are not trash
-      return [f for f in listdir(directory+fin_path) if isfile(directory+join(fin_path,f)) and (not ('trash_' in f or '_test_' in f))]
+      return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('trash_' in f or '_test_' in f))]
   #returns only file names that don't include _ds or _r  
   if use_trash:
     #return all non synth files
-    return [f for f in listdir(directory+fin_path) if isfile(join(directory+fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f))]
+    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f))]
   else:
     #return all non synth non trash files
-    return [f for f in listdir(directory+fin_path) if isfile(join(directory+fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f or 'trash_' in f))]
+    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f or 'trash_' in f))]
 
 def peakscleaning(df):
   """Cleaning for peaks data - drop any rows containing NA, scale features
@@ -59,7 +58,7 @@ def peakscleaning(df):
   df.drop(columns=[i for i in df.columns.values if 'val' in i],inplace=True)
   return df
 
-def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,directory='/content/drive/My Drive/ML Spectroscopy/',use_trash=False,raw=False,test=False):
+def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash=False,raw=False,test=False):
   """Imports data from all CSV files in 'fname_ls' found at location 'fin_path' 
   and returns in one large dataframe or a split of data for training
 
