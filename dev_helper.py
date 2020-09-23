@@ -82,13 +82,13 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
   """
 
   #list of file names with data
-  fname_ls=fnamelsbuilder(fin_path,synth,directory,use_trash,test=test)
+  fname_ls=fnamelsbuilder(fin_path,synth,use_trash,test=test)
 
   #create list to hold dataframes
   df_ls=[]
   #read in each file
   if raw:
-    df_ls=raw_processing(df_ls,fname_ls,directory,fin_path)
+    df_ls=raw_processing(df_ls,fname_ls,fin_path)
 
   else:
     for i in fname_ls:
