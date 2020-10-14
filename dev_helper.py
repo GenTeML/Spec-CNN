@@ -12,10 +12,10 @@ def fnamelsbuilder(fin_path,synth=False,use_trash=False,test=False):
   Args:
     fin_path: a string providing the path to the folder with the intended files
     synth: a boolean, if True then all files will be pulled including synthetic
-      data files. Use True if importing RRUFF data. 
-      
-      In order to avoid unexpected behavior, ensure the fin_path folder only 
-      contains training data files and no file names include _r or _ds unless 
+      data files. Use True if importing RRUFF data.
+
+      In order to avoid unexpected behavior, ensure the fin_path folder only
+      contains training data files and no file names include _r or _ds unless
       they are synthetic files
 
   Returns:
@@ -34,7 +34,7 @@ def fnamelsbuilder(fin_path,synth=False,use_trash=False,test=False):
     else:
       #return all file names that are not trash
       return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('trash_' in f or '_test_' in f))]
-  #returns only file names that don't include _ds or _r  
+  #returns only file names that don't include _ds or _r
   if use_trash:
     #return all non synth files
     return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f))]
@@ -49,35 +49,35 @@ def peakscleaning(df):
     df: a dataframe with peaks data
 
   Returns:
-    DataFrame of peaks data with no NA values, features scaled with sklearn 
+    DataFrame of peaks data with no NA values, features scaled with sklearn
     preprocessing.StandardScaler
   """
   df.dropna(inplace=True)
-  
+
   #drop relative intensities
   df.drop(columns=[i for i in df.columns.values if 'val' in i],inplace=True)
   return df
 
 def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash=False,raw=False,test=False):
-  """Imports data from all CSV files in 'fname_ls' found at location 'fin_path' 
+  """Imports data from all CSV files in 'fname_ls' found at location 'fin_path'
   and returns in one large dataframe or a split of data for training
 
   Args:
     fin_path: string, path to the folder with the intended files
-    synth: boolean, true if synthetic data is used; default false. Select True 
+    synth: boolean, true if synthetic data is used; default false. Select True
       for RRUFF data
-    split_df: boolean, true causes 'df_builder' to return split data df; 
-      default True. If True, function will return split data; if False, function 
+    split_df: boolean, true causes 'df_builder' to return split data df;
+      default True. If True, function will return split data; if False, function
       will return a single DataFrame
     dev_size: float on closed interval (0, 1.0), determines percentage of data
-      used for the dev set in the train_test_split. Ignored if 'split_df' is 
+      used for the dev set in the train_test_split. Ignored if 'split_df' is
       False
     r_state: integer, provides random state for the train_test_split. Ignored if
       'split_df' is False
 
   Returns:
-    Tuple of 4 DataFrames including all rows from files named in fname_ls split 
-    using the 'split_data()' function. 
+    Tuple of 4 DataFrames including all rows from files named in fname_ls split
+    using the 'split_data()' function.
     If 'split_df' is False, will return one DataFrame of data in fin_path
   """
 
@@ -102,6 +102,10 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
     df=df_ls[0]
   print(df)
 
+  #if not a test, remove rows with None for the labels
+  if not test:
+    df.dropna(axis=0,inplace=True)
+
   #if peaks data, additional cleaning
   if 'Peaks Only' in fin_path:
     df=peakscleaning(df)
@@ -111,11 +115,11 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
   #split data for processing
   if split_df:
     return splitdata(df,dev_size,r_state)
-  
+
   #split data for processing
   return df
 
-def raw_processing(df_ls,fname_ls,directory,fin_path):
+def raw_processing(df_ls,fname_ls,fin_path):
   t_labels={
     'qtz':0,
     'albite':1,
@@ -135,12 +139,12 @@ def raw_processing(df_ls,fname_ls,directory,fin_path):
 
   for i in fname_ls:
     if i.split('.')[-1]=='txt':
-      temp_df=pd.read_csv(directory+fin_path+i,delim_whitespace=True)
+      temp_df=pd.read_csv(fin_path+i,delim_whitespace=True)
       if temp_df.shape[1]<20:
-        temp_df=pd.read_csv(directory+fin_path+i,sep='\t')
+        temp_df=pd.read_csv(fin_path+i,sep='\t')
     else:
-      temp_df=pd.read_csv(directory+fin_path+i,delim_whitespace=False)
-    
+      temp_df=pd.read_csv(fin_path+i,delim_whitespace=False)
+
     temp_df.reset_index(inplace=True)
 
     #create traceable index
@@ -159,7 +163,7 @@ def raw_processing(df_ls,fname_ls,directory,fin_path):
 
     #trim to cols to [150,1100]
     trim_range=(150.,1100.)
-    
+
     temp_df.drop(columns=[j for j in temp_df.columns.values if float(j)<trim_range[0]],inplace=True)
     temp_df.drop(columns=[j for j in temp_df.columns.values if float(j)>trim_range[1]],inplace=True)
 
@@ -168,10 +172,10 @@ def raw_processing(df_ls,fname_ls,directory,fin_path):
 
     for k in range(int(trim_range[0]),int(trim_range[1])):
       std_df[k]=temp_df[[j for j in temp_df.columns.values if k<=float(j)<(k+1)]].min(axis=1)
-    
+
     try:
       std_df['label']=t_labels[i.split('_')[0]]
-    
+
     except:
       std_df['label']=None
 
@@ -197,10 +201,10 @@ def splitdata(X,dev_size=0.2,r_state=1):
   y=X[X.columns[-1]]
   X.drop(X.columns[-1],axis=1,inplace=True)
   #split into train and dev sets
-  from sklearn.model_selection import train_test_split 
+  from sklearn.model_selection import train_test_split
   return train_test_split(X,y,test_size = dev_size,random_state = r_state)
 
-def plot_roc(X_df,i):  
+def plot_roc(X_df,i):
   """plots the receiver operating characteristic curve for the data in X_df with
   true binary labels in the final column
 
@@ -213,7 +217,7 @@ def plot_roc(X_df,i):
 
   Notes:
     The Reciever Operator Characteristic (ROC) curve is built by plotting x,y at
-    various binary discrimination thresholds where x=true positive rate(tpr) and 
+    various binary discrimination thresholds where x=true positive rate(tpr) and
     y=false positive rate(fpr)
 
     tpr=True positive/(True Positive + False Negative)
@@ -228,11 +232,11 @@ def plot_roc(X_df,i):
 
   #plot the roc curves
   from matplotlib import pyplot as plt
-  plt.plot(fpr_p,tpr_p)  
+  plt.plot(fpr_p,tpr_p)
   plt.plot([0,1],[0,1],color='green')
-  plt.title('ROC Curve for Class '+str(i)) 
+  plt.title('ROC Curve for Class '+str(i))
   plt.show()
-  
+
 
   return tpr_p,fpr_p,thresh
 
@@ -260,7 +264,7 @@ def roc_all(outputs,labels):
   return pd.DataFrame(roc_d,index=['tpr','fpr','thresh'])
 
 def dec_pred(y_pred,threshold=0.95):
-  """takes prediction weights and applies a decision threshold to deterime the 
+  """takes prediction weights and applies a decision threshold to deterime the
   predicted class for each sample
 
   Args:
@@ -268,7 +272,7 @@ def dec_pred(y_pred,threshold=0.95):
     threshold: the determination threshold at which the model makes a prediction
 
   Returns:
-    a 1-d array of class predictions, unknown classes are returned as class 6 
+    a 1-d array of class predictions, unknown classes are returned as class 6
     """
   import numpy as np
   probs_ls=np.amax(y_pred,axis=1)
@@ -280,4 +284,3 @@ def dec_pred(y_pred,threshold=0.95):
     else:
       pred_lab[i]=6
   return pred_lab
-
