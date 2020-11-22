@@ -225,7 +225,7 @@ def raw_cnn_model(fin_path=r'Data/Raw Data/Continuous Wavelet Transformation/Lab
   print(type(X_train),type(X_dev),type(y_train),type(y_dev))
 
   #train a cnn model - v0.01
-  cnn_model,cnn_hist=train_cnn_model(X_train,y_train.values,X_dev,y_dev.values,hyperparameters,fast,fil_id)
+  cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
   pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
 
   #test cnn model with dev set
