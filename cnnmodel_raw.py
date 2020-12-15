@@ -37,9 +37,9 @@ class PredictionCallback(tf.keras.callbacks.Callback):
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
 
 def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
-                    id_val=None):
-  """
-  Trains a CNN model using the predetermined architecture and returns the model
+  id_val=None):
+  """Trains a CNN model using the predetermined architecture and returns the
+  model
 
   Args:
     X_train: DataFrame or ndarray of training set input features
@@ -48,17 +48,21 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
     X_dev: DataFrame or ndarray of dev set input features
     y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
       same order as the X_train samples
-    hyperparameters: an array of hyperparameters in the order: lr (learning
-      rate)(default 0.001), batch size (default 100), drop (dropout rate)
-      (default 0.55), epochs (default 100) - this will be updated in a future
-      state after the current deadline (5/25/2020)
+    hyperparameters: an array of hyperparameters in the order: learning
+      rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
+      (default 0.55), epochs (default 10)
     fast: boolean. if true, then the model runs more than twice as fast but does
       not record predictions of every sample for every epoch. If False, runs
       much more slowly but creates a csv of probability weights for every sample
       at every epoch for both the training and validation sets
     id_val: string that is prepended to all output files for tracking
 
+  Returns:
+      a tuple containing the trained model and the History object from training
+      that model
   """
+
+  #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
     lr=0.0001
     batch_size=100
@@ -69,6 +73,8 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
     batch_size=hyperparameters[1]
     drop=hyperparameters[2]
     epochs=hyperparameters[3]
+
+  #determine the appropriate callbacks, depening on if fast is true or false
   if not fast:
     callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
                                   id_val+'val_outputs.csv'),
@@ -86,6 +92,21 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
   return cnn_model,cnn_hist
 
 def layer_CBnAP(X_in,nfilters,size_C,s_C,size_P,lnum):
+  '''Defines one set of convolutional layers with a Convolution,
+  BatchNormalization, LeakyReLU activation, and MaxPooling1D
+
+  Args:
+    X_in: input matrix for the layers
+    nfilters: number of filters for the convolutional layer
+    size_C: size of the convolutional kernel
+    s_C: step size for the convolution layer
+    size_P: size for MaxPooling layer
+    lnum: layer number used for debugging
+
+  Returns:
+    Matrix of output values from this set of layers
+  '''
+
   # CONV -> BN -> RELU -> MaxPooling Block applied to X
   X_working=Conv1D(nfilters,size_C,s_C,name='conv'+lnum)(X_in)
   X_working=BatchNormalization(name='bn'+lnum)(X_working)
@@ -94,8 +115,19 @@ def layer_CBnAP(X_in,nfilters,size_C,s_C,size_P,lnum):
   return X_working
 
 def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
+  '''Defines and builds the CNN model with the given inputs
+
+  Args:
+    X_shape: the shape of the data for the model
+    y_shape: the shape of the labels for the model
+    lr: learning rate, default 0.001
+    drop: drop rate, default 0.55
+
+  Returns:
+    a compiled model as defined by this method
+  '''
+  #set the output path for model data
   mout_path=r'Model Data/CNN Model/'
-  #build a CNN and return untrained model given X and y shapes
 
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
@@ -158,16 +190,14 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
   Returns:
     None; creates a file at the /Model Data/CNN Model/ folder
   """
-
+  #predict classes for provided test set
   y_pred=model.predict(X_test,batch_size=1)
-  #import numpy as np
-  #print('\n\ny_pred\n\n',y_pred,'\n\n',y_pred.shape,'\n\n',np.amax(y_pred,axis=1))
 
-  #confusion matrix
   #report confusion matrix
   confmat=build_confmat(y_test,y_pred,threshold)
   display(confmat)
 
+  #if fast is not True, save the confusion matrix as either test or validation
   if not fast:
     if test:
       id_val=id_val+'test'
@@ -181,6 +211,16 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
 
 def save_model(model,mout_path):
+  '''saves model data to the given output fin_path
+
+  Args:
+    model: the model history file
+    mout_path: the filepath to store the model dataframe
+
+  Returns:
+    None. Creates a file at the given filepath
+  '''
+
   model.save(mout_path+'cnn.h5')
   print('model saved')
 
@@ -207,6 +247,17 @@ def dec_pred(y_pred,threshold=0.95):
   return pred_lab
 
 def build_confmat(y_label,y_pred,threshold):
+  '''builds the confusion matrix with labeled axes
+
+  Args:
+    y_label: a list of true labels for each sample
+    y_pred: a list of predicted labels for each samples
+    threshhold: the decision threshhold for the mat_labels
+
+  Returns:
+    A DataFrame containing the confusion matrix, the column names are the
+    predicted labels while the row indices are the true labels
+  '''
   _y_pred=dec_pred(y_pred,threshold)
 
   mat_labels=range(max([max(y_label),max(_y_pred)])+1)
@@ -216,12 +267,33 @@ def build_confmat(y_label,y_pred,threshold):
 
 def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',
          mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,
-         hyperparameters=None,fast=True,fil_id='0',threshold=.98,
-         raw=False):
+         hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+  '''calls methods to build and train a model as well as testing against the
+  validation sets
+
+  Args:
+    fin_path: file path for pulling in data
+    mout_path: file path for saving model data
+    dev_size: size of the dev set as a percentage between 0 and 1 inclusive.
+      Default 0.2
+    r_state: random seed value. Default 1
+    hyperparameters: an array of hyperparameters in the order: learning
+      rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
+      (default 0.55), epochs (default 10)
+    fast: boolean. if true, then the model runs more than twice as fast but does
+      not record predictions of every sample for every epoch. If False, runs
+      much more slowly but creates a csv of probability weights for every sample
+      at every epoch for both the training and validation sets
+    id_val: string that is prepended to all output files for tracking
+    threshold: decision threshold for labeling
+
+  Returns:
+    CNN model built with raw data inputs
+  '''
 
   #build dataframes for all data after splitting
   X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
-                                          raw=raw)
+                                          raw=True)
   print(type(X_train),type(X_dev),type(y_train),type(y_dev))
 
   #train a cnn model - v0.01
