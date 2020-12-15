@@ -3,7 +3,7 @@
 '''
 Contains methods that define the model
 '''
-import dev_helper as h
+import helper as h
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as K
@@ -214,14 +214,14 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def raw_cnn_model(fin_path=r'Data/Raw Data/Continuous Wavelet Transformation/Labeled/',
+def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',
          mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,
-         hyperparameters=None,fast=True,fil_id='0',use_trash=False,threshold=.98,
+         hyperparameters=None,fast=True,fil_id='0',threshold=.98,
          raw=False):
 
   #build dataframes for all data after splitting
   X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
-                                          use_trash=use_trash,raw=raw)
+                                          raw=raw)
   print(type(X_train),type(X_dev),type(y_train),type(y_dev))
 
   #train a cnn model - v0.01

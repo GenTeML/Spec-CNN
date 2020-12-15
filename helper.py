@@ -6,17 +6,14 @@ Contains functions for managing, shaping, and modifying data or analysis
 import numpy as np
 import pandas as pd
 
-def fnamelsbuilder(fin_path,synth=False,use_trash=False,test=False):
+def fnamelsbuilder(fin_path):
   """Build a list of files in directory 'fin_path'.
 
   Args:
     fin_path: a string providing the path to the folder with the intended files
-    synth: a boolean, if True then all files will be pulled including synthetic
-      data files. Use True if importing RRUFF data.
 
       In order to avoid unexpected behavior, ensure the fin_path folder only
-      contains training data files and no file names include _r or _ds unless
-      they are synthetic files
+      contains folders or data files
 
   Returns:
     A python list of file names in fin_path
@@ -24,23 +21,8 @@ def fnamelsbuilder(fin_path,synth=False,use_trash=False,test=False):
 
   from os import listdir
   from os.path import isfile, join
-  if test:
-    #return file names that contain "_test_"
-    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and ('_test_' in f)]
-  if synth:
-    if use_trash:
-      #returns all file names
-      return [f for f in listdir(fin_path) if isfile(join(fin_path,f))]
-    else:
-      #return all file names that are not trash
-      return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('trash_' in f or '_test_' in f))]
-  #returns only file names that don't include _ds or _r
-  if use_trash:
-    #return all non synth files
-    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f))]
-  else:
-    #return all non synth non trash files
-    return [f for f in listdir(fin_path) if isfile(join(fin_path,f)) and (not ('_ds' in f or '_r' in f or '_test_' in f or 'trash_' in f))]
+  #return files
+  return [f for f in listdir(fin_path) if isfile(join(fin_path,f))]
 
 def peakscleaning(df):
   """Cleaning for peaks data - drop any rows containing NA, scale features
@@ -58,14 +40,12 @@ def peakscleaning(df):
   df.drop(columns=[i for i in df.columns.values if 'val' in i],inplace=True)
   return df
 
-def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash=False,raw=False,test=False):
+def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
   """Imports data from all CSV files in 'fname_ls' found at location 'fin_path'
   and returns in one large dataframe or a split of data for training
 
   Args:
     fin_path: string, path to the folder with the intended files
-    synth: boolean, true if synthetic data is used; default false. Select True
-      for RRUFF data
     split_df: boolean, true causes 'df_builder' to return split data df;
       default True. If True, function will return split data; if False, function
       will return a single DataFrame
@@ -74,15 +54,17 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
       False
     r_state: integer, provides random state for the train_test_split. Ignored if
       'split_df' is False
+    raw: boolean, True if the input is raw data, false if it has been
+      preprocessed (eg. with continuous wavelet transform)
 
   Returns:
-    Tuple of 4 DataFrames including all rows from files named in fname_ls split
-    using the 'split_data()' function.
+    If split_data=True, Tuple of 4 DataFrames including all rows from files
+    named in fname_ls split using the 'split_data()' function.
     If 'split_df' is False, will return one DataFrame of data in fin_path
   """
 
   #list of file names with data
-  fname_ls=fnamelsbuilder(fin_path,synth,use_trash,test=test)
+  fname_ls=fnamelsbuilder(fin_path)
 
   #create list to hold dataframes
   df_ls=[]
@@ -100,17 +82,15 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
     df=pd.concat(df_ls)
   else:
     df=df_ls[0]
-  print(df)
 
-  #if not a test, remove rows with None for the labels
-  if not test:
-    df.dropna(axis=0,inplace=True)
+  #remove rows with "None"s that will break the model
+  df.dropna(axis=0,inplace=True)
 
   #if peaks data, additional cleaning
   if 'Peaks Only' in fin_path:
     df=peakscleaning(df)
 
-  print('Master data set shape is',df.shape,'\n\n')
+  print('Master data set shape is',df.shape,'\n\n','Master data set is\n',df)
 
   #split data for processing
   if split_df:
@@ -120,46 +100,23 @@ def dfbuilder(fin_path,synth=False,split_df=True,dev_size=.2,r_state=1,use_trash
   return df
 
 def raw_processing(df_ls,fname_ls,fin_path):
-  t_labels={
-    'qtz':0,
-    'albite':1,
-    'hb':2,
-    'bt':3,
-    'ms':4,
-    'fo':5,
-    'fa':6,
-    'aug':7,
-    'en':8,
-    'an':9,
-    'mc':10,
-    'cal':11,
-    'gyp':12,
-    'hal':13
-  }
+  '''imports and standardizes raw data to one intensity value per wave number
+  between wave number 150 and 1100. Designed for use by the dfbuilder method
 
-  for i in fname_ls:
-    if i.split('.')[-1]=='txt':
-      temp_df=pd.read_csv(fin_path+i,delim_whitespace=True)
-      if temp_df.shape[1]<20:
-        temp_df=pd.read_csv(fin_path+i,sep='\t')
-    else:
-      temp_df=pd.read_csv(fin_path+i,delim_whitespace=False)
+  Args:
+    df_ls: an empty list for holding the imported DataFrames
+    fname_ls: list of data file names
+    fin_path: the path where the data files can be found
 
-    temp_df.reset_index(inplace=True)
+  Returns:
+    A python list of DataFrames with standardized raw data files
+  '''
+  for fil in fname_ls:
+    temp_df=pd.read_csv(fin_path+fil,index_col='og-idx',delim_whitespace=False)
 
-    #create traceable index
-    temp_df['fname']=i.split('.')[0]
-    temp_df['og-idx']=temp_df.fname+"-"+temp_df.index.map(str)
-    temp_df.set_index(keys='og-idx',drop=True,inplace=True)
-
-    #drop non-numeric columns from data
-    dropcolumns=[]
-    for j in temp_df.columns.values:
-      try:
-        float(j)
-      except ValueError:
-        dropcolumns.append(j)
-    temp_df.drop(columns=dropcolumns,inplace=True)
+    #separate the labels
+    temp_labels=temp_df['label']
+    temp_df.drop(columns=['label'],inplace=True)
 
     #trim to cols to [150,1100]
     trim_range=(150.,1100.)
@@ -167,20 +124,16 @@ def raw_processing(df_ls,fname_ls,fin_path):
     temp_df.drop(columns=[j for j in temp_df.columns.values if float(j)<trim_range[0]],inplace=True)
     temp_df.drop(columns=[j for j in temp_df.columns.values if float(j)>trim_range[1]],inplace=True)
 
-    #standardize wavelength
+    #standardize to 1 intensity value per wave number
     std_df=pd.DataFrame()
 
     for k in range(int(trim_range[0]),int(trim_range[1])):
       std_df[k]=temp_df[[j for j in temp_df.columns.values if k<=float(j)<(k+1)]].min(axis=1)
 
-    try:
-      std_df['label']=t_labels[i.split('_')[0]]
-
-    except:
-      std_df['label']=None
-
+    #add labels back to DataFrame, append to the df_ls DataFrame list
+    std_df['label']=temp_labels.values
     df_ls.append(std_df)
-    #print('raw df:',df_ls)
+
   return df_ls
 
 def splitdata(X,dev_size=0.2,r_state=1):
