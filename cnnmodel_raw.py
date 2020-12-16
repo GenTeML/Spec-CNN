@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Contains methods that define the model
+Contains methods that define the model with raw data
 '''
 import helper as h
 import pandas as pd
