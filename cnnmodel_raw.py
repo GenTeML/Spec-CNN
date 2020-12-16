@@ -36,9 +36,8 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     except:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
 
-def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
-  id_val=None):
-  """Trains a CNN model using the predetermined architecture and returns the
+def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,id_val=None):
+  '''Trains a CNN model using the predetermined architecture and returns the
   model
 
   Args:
@@ -60,7 +59,7 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,
   Returns:
       a tuple containing the trained model and the History object from training
       that model
-  """
+  '''
 
   #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
@@ -265,9 +264,7 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',
-         mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,
-         hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 
