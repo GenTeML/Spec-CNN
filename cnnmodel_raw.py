@@ -84,7 +84,7 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
   #call build_cnn and train model, output trained model
   cnn_model=build_cnn(X_train.shape,y_train.max()+1,lr,drop)
 
-  mout_path=r'Model Data/CNN Model/'
+  mout_path=r'Data/Model Data/Raw CNN/'
 
   cnn_hist=cnn_model.fit(X_train,y_train,batch_size=batch_size,epochs=epochs,validation_data=(X_dev,y_dev),callbacks=callbacks)
 
@@ -126,7 +126,7 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
     a compiled model as defined by this method
   '''
   #set the output path for model data
-  mout_path=r'Model Data/CNN Model/'
+  mout_path=r'Data/Model Data/Raw CNN/'
 
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
@@ -203,14 +203,14 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Model Data/CNN Model/'+id_val
+    confmatout_path=r'Data/Model Data/Raw CNN/'+id_val
 
     confmat.to_csv(confmatout_path+r'confmat.csv')
     #save output weights
     pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
 
 def save_model(model,mout_path):
-  '''saves model data to the given output fin_path
+  '''saves model data to the given output mout_path
 
   Args:
     model: the model history file
@@ -242,7 +242,7 @@ def dec_pred(y_pred,threshold=0.95):
     if probs_ls[i]>threshold:
       pred_lab[i]=class_ls[i]
     else:
-      pred_lab[i]=6
+      pred_lab[i]=15
   return pred_lab
 
 def build_confmat(y_label,y_pred,threshold):
@@ -291,7 +291,6 @@ def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN M
   #build dataframes for all data after splitting
   X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
                                           raw=True)
-  print(type(X_train),type(X_dev),type(y_train),type(y_dev))
 
   #train a cnn model - v0.01
   cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
