@@ -84,7 +84,7 @@ def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
     df=df_ls[0]
 
   #remove rows with "None"s that will break the model
-  df.dropna(axis=0,inplace=True)
+  #df.dropna(axis=0,inplace=True)
 
   #if peaks data, additional cleaning
   if 'Peaks Only' in fin_path:
