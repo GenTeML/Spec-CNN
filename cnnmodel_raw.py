@@ -203,7 +203,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Data/Model Data/Raw CNN/'+id_val
+    confmatout_path=r'Data/Model Data/Raw/'+id_val
 
     confmat.to_csv(confmatout_path+r'confmat.csv')
     #save output weights
@@ -264,7 +264,7 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/Raw/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 
