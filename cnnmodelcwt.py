@@ -241,7 +241,6 @@ def dec_pred(y_pred,threshold=0.95):
       pred_lab[i]=class_ls[i]
     else:
       pred_lab[i]=15
-  print(type(pred_lab), pred_lab)
   return pred_lab
 
 def build_confmat(y_label,y_pred,threshold):
@@ -257,16 +256,8 @@ def build_confmat(y_label,y_pred,threshold):
     predicted labels while the row indices are the true labels
   '''
   import numpy as np
-  print(type(y_pred),type(y_label))
 
   _y_pred=dec_pred(y_pred,threshold)
-  print(type(_y_pred),type(y_label))
-  print('_y_pred types:',_y_pred.dtype)
-  try:
-      print('y_label data type:',y_label.dtype)
-      print('y_label data:', y_label)
-  except:
-      print('y_label values:', y_label)
 
   mat_labels=range(max([max(y_label),max(_y_pred)])+1)
 
