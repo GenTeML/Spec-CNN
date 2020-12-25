@@ -264,7 +264,7 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Data/Model Data/CNN model/CWT/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Model Data/CNN model/CWT/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 

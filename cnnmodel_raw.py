@@ -203,7 +203,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'_validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Data/Model Data/Raw/'+id_val
+    confmatout_path=r'Model Data/CNN Model/Raw/'+id_val
 
     confmat.to_csv(confmatout_path+r'_confmat.csv')
     #save output weights
@@ -258,8 +258,9 @@ def build_confmat(y_label,y_pred,threshold):
     predicted labels while the row indices are the true labels
   '''
   _y_pred=dec_pred(y_pred,threshold)
+  print('_y_pred=',_y_pred,'\n\n\ny_label=',y_label)
 
-  mat_labels=range(max([max(y_label),max(_y_pred)])+1)
+  mat_labels=range(max([max(y_label),int(max(_y_pred))])+1)
 
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
