@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Contains methods that define the model with raw data
+Contains methods that define the model with preprocessed CWT data
 '''
 import helper as h
 import pandas as pd
@@ -37,8 +37,8 @@ class PredictionCallback(tf.keras.callbacks.Callback):
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
 
 def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,id_val=None):
-  '''Trains a CNN model using the predetermined architecture and returns the
-  model
+  '''
+  Trains a CNN model using the predetermined architecture and returns the model
 
   Args:
     X_train: DataFrame or ndarray of training set input features
@@ -47,9 +47,10 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
     X_dev: DataFrame or ndarray of dev set input features
     y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
       same order as the X_train samples
-    hyperparameters: an array of hyperparameters in the order: learning
-      rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
-      (default 0.55), epochs (default 10)
+    hyperparameters: an array of hyperparameters in the order: lr (learning
+      rate)(default 0.001), batch size (default 100), drop (dropout rate)
+      (default 0.55), epochs (default 100) - this will be updated in a future
+      state after the current deadline (5/25/2020)
     fast: boolean. if true, then the model runs more than twice as fast but does
       not record predictions of every sample for every epoch. If False, runs
       much more slowly but creates a csv of probability weights for every sample
@@ -63,7 +64,7 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
-    lr=0.0001
+    lr=0.001
     batch_size=100
     drop=0.55
     epochs=10
@@ -75,16 +76,14 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #determine the appropriate callbacks, depening on if fast is true or false
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
-                                  id_val+'val_outputs.csv'),
-               K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',id_val+'val_outputs.csv'),K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
   else:
     callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
 
   #call build_cnn and train model, output trained model
   cnn_model=build_cnn(X_train.shape,y_train.max()+1,lr,drop)
 
-  mout_path=r'Data/Model Data/Raw CNN/'
+  mout_path=r'Data/Model Data/CWT CNN/'
 
   cnn_hist=cnn_model.fit(X_train,y_train,batch_size=batch_size,epochs=epochs,validation_data=(X_dev,y_dev),callbacks=callbacks)
 
@@ -126,29 +125,29 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
     a compiled model as defined by this method
   '''
   #set the output path for model data
-  mout_path=r'Data/Model Data/Raw CNN/'
+  mout_path=r'Data/Model Data/CWT CNN/'
 
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
   X_input=Input((X_shape[1],1))
 
   #first layer - conv, batch normalization, activation, pooling
-  nfilters=16
-  size_C=21
+  nfilters=8
+  size_C=13
   s_C=1
-  size_P=2
+  size_P=3
   X=layer_CBnAP(X_input,nfilters,size_C,s_C,size_P,'1')
 
   #second layer - conv, batch normalization, activation, pooling
-  nfilters=32
-  size_C=11
+  nfilters=16
+  size_C=5
   s_C=1
   size_P=2
   X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'2')
 
   #third layer - conv, batch normalization, activation, pooling
-  nfilters=64
-  size_C=5
+  nfilters=32
+  size_C=3
   s_C=1
   size_P=2
   X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'3')
@@ -203,7 +202,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Data/Model Data/Raw CNN/'+id_val
+    confmatout_path=r'Model Data/CNN Model/CWT CNN/'+id_val
 
     confmat.to_csv(confmatout_path+r'confmat.csv')
     #save output weights
@@ -219,7 +218,6 @@ def save_model(model,mout_path):
   Returns:
     None. Creates a file at the given filepath
   '''
-
   model.save(mout_path+'cnn.h5')
   print('model saved')
 
@@ -232,17 +230,18 @@ def dec_pred(y_pred,threshold=0.95):
     threshold: the determination threshold at which the model makes a prediction
 
   Returns:
-    a 1-d array of class predictions, unknown classes are returned as class 6
+    a 1-d array of class predictions, unknown classes are returned as class 8
     """
   import numpy as np
   probs_ls=np.amax(y_pred,axis=1)
   class_ls=np.argmax(y_pred,axis=1)
-  pred_lab=np.zeros(len(y_pred))
+  pred_lab=np.zeros(len(y_pred),dtype=int)
   for i in range(len(probs_ls)):
     if probs_ls[i]>threshold:
       pred_lab[i]=class_ls[i]
     else:
       pred_lab[i]=15
+  print(type(pred_lab), pred_lab)
   return pred_lab
 
 def build_confmat(y_label,y_pred,threshold):
@@ -257,14 +256,24 @@ def build_confmat(y_label,y_pred,threshold):
     A DataFrame containing the confusion matrix, the column names are the
     predicted labels while the row indices are the true labels
   '''
+  import numpy as np
+  print(type(y_pred),type(y_label))
+
   _y_pred=dec_pred(y_pred,threshold)
+  print(type(_y_pred),type(y_label))
+  print('_y_pred types:',_y_pred.dtype)
+  try:
+      print('y_label data type:',y_label.dtype)
+      print('y_label data:', y_label)
+  except:
+      print('y_label values:', y_label)
 
   mat_labels=range(max([max(y_label),max(_y_pred)])+1)
 
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def cwt_cnn_model(fin_path=r'Data/Preprocessed/Continuous Wavelet Transformation/Labeled/',mout_path=r'Data/Model Data/CWT CNN/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 
@@ -285,14 +294,13 @@ def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN M
     threshold: decision threshold for labeling
 
   Returns:
-    CNN model built with raw data inputs
+    CNN model built with preprocessed CWT data inputs
   '''
 
   #build dataframes for all data after splitting
-  X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
-                                          raw=True)
+  X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,split_df=True,dev_size=dev_size,r_state=r_state,raw=False)
 
-  #train a cnn model - v0.01
+  #train a cnn model - v1.0
   cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
   pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
 
