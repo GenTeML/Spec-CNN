@@ -186,7 +186,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     id_val: a string used in the file name of the outputs for identification
 
   Returns:
-    None; creates a file at the /Model Data/CNN Model/ folder
+    None; creates a file at the /Model Data/CNN Model/CWT/ folder
   """
   #predict classes for provided test set
   y_pred=model.predict(X_test,batch_size=1)
@@ -198,13 +198,13 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
   #if fast is not True, save the confusion matrix as either test or validation
   if not fast:
     if test:
-      id_val=id_val+'test'
+      id_val=id_val+'_test'
     else:
-      id_val=id_val+'validation'
+      id_val=id_val+'_validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Model Data/CNN Model/CWT CNN/'+id_val
+    confmatout_path=r'Model Data/CNN Model/CWT/'+id_val
 
-    confmat.to_csv(confmatout_path+r'confmat.csv')
+    confmat.to_csv(confmatout_path+r'_confmat.csv')
     #save output weights
     pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
 
@@ -273,7 +273,7 @@ def build_confmat(y_label,y_pred,threshold):
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def cwt_cnn_model(fin_path=r'Data/Preprocessed/Continuous Wavelet Transformation/Labeled/',mout_path=r'Data/Model Data/CWT CNN/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Data/Model Data/CNN model/CWT/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 
