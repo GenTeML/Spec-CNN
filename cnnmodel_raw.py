@@ -187,7 +187,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     id_val: a string used in the file name of the outputs for identification
 
   Returns:
-    None; creates a file at the /Model Data/CNN Model/ folder
+    None; creates a file at the /Model Data/CNN Model/Raw/ folder
   """
   #predict classes for provided test set
   y_pred=model.predict(X_test,batch_size=1)
@@ -199,13 +199,13 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
   #if fast is not True, save the confusion matrix as either test or validation
   if not fast:
     if test:
-      id_val=id_val+'test'
+      id_val=id_val+'_test'
     else:
-      id_val=id_val+'validation'
+      id_val=id_val+'_validation'
     #save confusion matrix as csv to drive
     confmatout_path=r'Data/Model Data/Raw/'+id_val
 
-    confmat.to_csv(confmatout_path+r'confmat.csv')
+    confmat.to_csv(confmatout_path+r'_confmat.csv')
     #save output weights
     pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
 
