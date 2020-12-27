@@ -235,5 +235,5 @@ def dec_pred(y_pred,threshold=0.95):
     if probs_ls[i]>threshold:
       pred_lab[i]=class_ls[i]
     else:
-      pred_lab[i]=6
+      pred_lab[i]=15
   return pred_lab
