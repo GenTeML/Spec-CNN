@@ -2,8 +2,6 @@
 
 __pycache__/
 
-Data/
-
 .DS_Store
 
 Testing*Notebook.ipynb
@@ -12,4 +10,6 @@ Data*Processing*Temp/
 
 DataProcessingBatch.ipynb
 
-Model Data/
+**/Mixed/**
+
+**/Single/**
