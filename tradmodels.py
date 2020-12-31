@@ -25,11 +25,13 @@ def set_split(target_set,noise_set):
   return h.splitdata(noise_set.append(target_set),dev_size=0.2,r_state=1)
 
 def train_model(X_train,y_train):
+  #perform PCA to reduce the features
+
   #create model
   from sklearn.ensemble import RandomForestClassifier
   return RandomForestClassifier(n_estimators=100).fit(X_train,y_train)
 
-def assess_model(model,X_dev,y_dev,m_label,thresh=0.0,id_val='0'):
+def assess_model(model,X_dev,y_dev,m_label,fil_id,thresh,save_path):
   #check model
   print(model.score(X_dev,y_dev))
 
@@ -42,8 +44,8 @@ def assess_model(model,X_dev,y_dev,m_label,thresh=0.0,id_val='0'):
   print('Model prectictions',model.predict_proba(X_dev))
   output_probs=pd.DataFrame(preds,index=y_dev.index.values)
   output_probs['label']=y_dev
-  output_probs.to_csv('Model Data/Binary Model/Single Models/Single Models'+str(m_label)+id_val+'_probs.csv',mode='w')
-  pd.DataFrame(cm).to_csv('Model Data/Binary Model/Single Models/Single Models'+str(m_label)+id_val+'_confmat.csv',mode='w')
+  output_probs.to_csv(save_path+'_'+str(m_label)+'_probs.csv',mode='w')
+  pd.DataFrame(cm).to_csv(save_path+'_'+str(m_label)+'_confmat.csv',mode='w')
 
 def run_pca(df):
   #print(df)
@@ -56,7 +58,7 @@ def run_pca(df):
   #print(output_df)
   return output_df,pca
 
-def train_models(fin_path):
+def train_model_set(fin_path,fil_id,save_path):
   """Trains a binary classifier model for each class in the training set and
   returns a list of those binary_classifier_probs
 
@@ -68,11 +70,9 @@ def train_models(fin_path):
     of labels included in the training set, and a list of PCA models for each
     label
   """
-  #set filepaths for import/export
-  fin_path=r'Data/Preprocessed/Continuous Wavelet Transformation/Labeled/'
 
   #build master dataframe of data from fin_path and run pca to reduce the feature set
-  df,pca=run_pca(h.dfbuilder(fin_path,synth=False,split_df=False,dev_size=.2,r_state=1,directory=directory,use_trash=False))
+  df,pca=run_pca(h.dfbuilder(fin_path,split_df=False,dev_size=.2,r_state=1,raw=False))
 
   #list for holding models
   m_list=[]
@@ -85,15 +85,21 @@ def train_models(fin_path):
     target_df=df.loc[df['label']==i,:]
     noise_df=df.loc[df['label']!=i,:]
     X_train,X_dev,y_train,y_dev=set_split(target_df,noise_df)
-    #print('\ndata split\n',X_train.head(),'\n\n',y_train.head())
     m_list.append(train_model(X_train,y_train.values.ravel()))
     print('model trained')
     print(y_train)
-    assess_model(m_list[-1],X_train,y_train,i,id_val='train')
-    assess_model(m_list[-1],X_dev,y_dev,i,id_val='dev')
+    assess_model(m_list[-1],X_train,y_train,i,fil_id=fil_id+'_train',thresh=0.0,save_path=save_path)
+    assess_model(m_list[-1],X_dev,y_dev,i,fil_id=fil_id+'_dev',thresh=0.0,save_path=save_path)
   return m_list,l_list,pca
 
-def model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',raw=False):
+def make_model_dir(fil_id):
+  from os import mkdir,path,getcwd
+  working_dir=getcwd()
+  save_path=(path.join(working_dir,'Model Data/Binary Model',fil_id,))
+  mkdir(save_path)
+  return save_path
+
+def model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False):
   """Trains a series of binary models, one for each label in the data set found
   in fin_path and tests against data in the testin_path
 
@@ -107,8 +113,10 @@ def model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Sin
     list of trained binary models, a list of trained PCA models
 """
 
+  save_path=make_model_dir(fil_id)
+
   #train the models for testing
-  m_list,l_list,pca_list=train_models(fin_path)
+  m_list,l_list,pca_list=train_model_set(fin_path,fil_id,save_path)
 
 
   '''should this and the following section be combined into one method?'''
@@ -130,7 +138,7 @@ def model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Sin
   label_df['label']=test_df['label']
 
 
-  '''Save Model Data - ensure filepath exists'''
-  label_df.to_csv('Model Data/Binary Model/binary_classifier_probs.csv',mode='w')
+  '''Save Model Data'''
+  label_df.to_csv('Model Data/Binary Model/binary_classifier_probs_'+fil_id+'.csv',mode='w')
 
   return label_df,m_list,pca
