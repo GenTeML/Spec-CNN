@@ -24,12 +24,19 @@ def set_split(target_set,noise_set):
   target_set.label=1
   return h.splitdata(noise_set.append(target_set),dev_size=0.2,r_state=1)
 
-def train_model(X_train,y_train):
-  #perform PCA to reduce the features
-
-  #create model
-  from sklearn.ensemble import RandomForestClassifier
-  return RandomForestClassifier(n_estimators=100).fit(X_train,y_train)
+def train_model(X_train,y_train,mtype):
+  #create model depending on the mtype passed
+  if mtype == r'Binary Model':
+    from sklearn.ensemble import RandomForestClassifier
+    return RandomForestClassifier(n_estimators=100).fit(X_train,y_train)
+  if mtype == r'Logistic':
+    from sklearn.linear_model import LogisticRegression
+    return LogisticRegression(max_iter=500).fit(X_train,y_train)
+  if mtype == r'SVC':
+    from sklearn.svm import LinearSVC
+    return LinearSVC(penalty='l1',dual=False,max_iter=5000).fit(X_train,y_train)
+  else:
+    return None
 
 def assess_model(model,X_dev,y_dev,m_label,fil_id,thresh,save_path):
   #check model
@@ -143,6 +150,54 @@ def binary_model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT D
 
   return label_df,m_list,pca
 
+
+
+
+
+
+"""work in progress"""
+
+
+
+
+def define_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False,r_state=1):
+  """Trains a series of binary models, one for each label in the data set found
+  in fin_path and tests against data in the testin_path
+
+  Args:
+    fin_path: string, path to folder with training data files
+    testin_path: string, path to folder with the test data
+    raw: boolean, True if the input is raw data, false if it has been Preprocessed
+    r_state: int, random seed value
+
+  Returns:
+    Tuple of objects in the following order: DataFrame of predicted labels, a
+    list of trained binary models, a list of trained PCA models
+  """
+
+  #get the current working path to provide a place to save the model data
+  save_path=make_model_dir(fil_id,r'Binary Model')
+
+  #train the models for testing
+  m_list,l_list,pca=train_model_set(fin_path,fil_id,save_path)
+
+  #import test data, perform pca, re-associate labels
+  test_df=prep_test(pca,testin_path,r_state,raw)
+
+  #create an empty ndarray to hold the predicted labels
+  labels=np.empty(shape=(len(test_df.index),len(m_list)))
+
+  #test each of the binary classifiers
+  for j in range(len(m_list)):
+    labels[:,j]=m_list[j].predict_proba(test_df.drop(['label'],axis=1))[:,1]
+  label_df=pd.DataFrame(labels,index=test_df.index.values,columns=l_list)
+  label_df['label']=test_df['label']
+
+  #save model data
+  label_df.to_csv('Model Data/Binary Model/binary_classifier_probs_'+fil_id+'.csv',mode='w')
+
+  return label_df,m_list,pca
+
 def logistic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False,r_state=1):
   """Trains a logistic regression model, one for each label in the data set
   found in fin_path and tests against data in the testin_path
@@ -159,10 +214,10 @@ def logistic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Dat
   """
 
   #get the current working path to provide a place to save the model data
-  save_path=make_model_dir(fil_id)
+  save_path=make_model_dir(fil_id,r'Logistic')
 
   #train the models for testing
-  lmodel,y,pca=train_model_set(fin_path,fil_id,save_path)
+  lmodel,y,pca=define_model(fin_path,fil_id,save_path,r'Logistic')
 
   #import test data, perform pca, re-associate labels
   test_df=prep_test(testin_path,r_state,raw,pca)
