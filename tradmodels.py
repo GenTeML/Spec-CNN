@@ -42,27 +42,28 @@ def assess_model(model,X_dev,y_dev,m_label,fil_id,thresh,save_path):
   #check model
   print(model.score(X_dev,y_dev))
 
-  preds=model.predict_proba(X_dev)
+  try:
+    preds=model.predict_proba(X_dev)
+  except:
+    preds=model.decision_function(X_dev)
 
   from sklearn.metrics import confusion_matrix
   cm=confusion_matrix(y_dev,h.dec_pred(preds,thresh))
 
   print('Model label ',m_label,'\n',cm,'\n\n\n')
-  print('Model prectictions',model.predict_proba(X_dev))
+  print('Model prectictions',preds)
   output_probs=pd.DataFrame(preds,index=y_dev.index.values)
   output_probs['label']=y_dev
-  output_probs.to_csv(save_path+'_'+str(m_label)+'_probs.csv',mode='w')
-  pd.DataFrame(cm).to_csv(save_path+'_'+str(m_label)+'_confmat.csv',mode='w')
+  output_probs.to_csv(save_path+'/'+str(m_label)+'_probs.csv',mode='w')
+  pd.DataFrame(cm).to_csv(save_path+'/'+str(m_label)+'_confmat.csv',mode='w')
 
 def run_pca(df):
-  #print(df)
   temp_df=df.drop(['label'],axis=1)
 
   from sklearn.decomposition import PCA
   pca=PCA(0.8)
   output_df=pd.DataFrame(pca.fit_transform(temp_df.values),index=df.index.values)
   output_df['label']=df['label']
-  #print(output_df)
   return output_df,pca
 
 def train_model_set(fin_path,fil_id,save_path):
@@ -92,9 +93,8 @@ def train_model_set(fin_path,fil_id,save_path):
     target_df=df.loc[df['label']==i,:]
     noise_df=df.loc[df['label']!=i,:]
     X_train,X_dev,y_train,y_dev=set_split(target_df,noise_df)
-    m_list.append(train_model(X_train,y_train.values.ravel()))
+    m_list.append(train_model(X_train,y_train.values.ravel(),'Binary Model'))
     print('model trained')
-    print(y_train)
     assess_model(m_list[-1],X_train,y_train,i,fil_id=fil_id+'_train',thresh=0.0,save_path=save_path)
     assess_model(m_list[-1],X_dev,y_dev,i,fil_id=fil_id+'_dev',thresh=0.0,save_path=save_path)
   return m_list,l_list,pca
@@ -108,11 +108,12 @@ def make_model_dir(fil_id,mtype):
 
 def prep_test(pca,testin_path=r'/Data/CWT Data/Single/',r_state=1,raw=False):
   init_test_df=h.dfbuilder(testin_path,split_df=False,r_state=1,raw=raw)
+  init_test_df.dropna(inplace=True)
   test_df=pd.DataFrame(pca.transform(init_test_df.drop(['label'],axis=1).values),index=init_test_df.index.values)
   test_df['label']=init_test_df['label']
   return test_df
 
-def binary_model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False,r_state=1):
+def binary_model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Mixed/',fil_id='0',raw=False,r_state=1):
   """Trains a series of binary models, one for each label in the data set found
   in fin_path and tests against data in the testin_path
 
@@ -146,59 +147,30 @@ def binary_model_set(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT D
   label_df['label']=test_df['label']
 
   #save model data
-  label_df.to_csv('Model Data/Binary Model/binary_classifier_probs_'+fil_id+'.csv',mode='w')
+  label_df.to_csv(save_path+'/'+'binary_classifier_probs_'+fil_id+'.csv',mode='w')
 
   return label_df,m_list,pca
 
-
-
-
-
-
-"""work in progress"""
-
-
-
-
-def define_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False,r_state=1):
-  """Trains a series of binary models, one for each label in the data set found
-  in fin_path and tests against data in the testin_path
-
-  Args:
-    fin_path: string, path to folder with training data files
-    testin_path: string, path to folder with the test data
-    raw: boolean, True if the input is raw data, false if it has been Preprocessed
-    r_state: int, random seed value
+def define_model(fin_path,fil_id,save_path,mtype):
+  """Runs PCA and trains a model of the selected type (either SVC or Logistic
+  regression)
 
   Returns:
-    Tuple of objects in the following order: DataFrame of predicted labels, a
-    list of trained binary models, a list of trained PCA models
+    Tuple of objects in the following order: a trained scikit-learn logistic
+    regression model, a trained scikit-learn pca model
   """
+  #build master dataframe of data from fin_path and run pca to reduce the feature set
+  df,pca=run_pca(h.dfbuilder(fin_path,split_df=False,dev_size=.2,r_state=1,raw=False))
 
-  #get the current working path to provide a place to save the model data
-  save_path=make_model_dir(fil_id,r'Binary Model')
+  X_train,X_dev,y_train,y_dev=h.splitdata(df,0.2,1)
 
-  #train the models for testing
-  m_list,l_list,pca=train_model_set(fin_path,fil_id,save_path)
+  #train model
+  tmodel=train_model(X_train,y_train,mtype)
+  assess_model(tmodel,X_train,y_train,mtype,fil_id=fil_id+'_train',thresh=0.0,save_path=save_path)
+  assess_model(tmodel,X_dev,y_dev,mtype,fil_id=fil_id+'_dev',thresh=0.0,save_path=save_path)
+  return sorted(df['label'].unique().tolist()),tmodel,pca
 
-  #import test data, perform pca, re-associate labels
-  test_df=prep_test(pca,testin_path,r_state,raw)
-
-  #create an empty ndarray to hold the predicted labels
-  labels=np.empty(shape=(len(test_df.index),len(m_list)))
-
-  #test each of the binary classifiers
-  for j in range(len(m_list)):
-    labels[:,j]=m_list[j].predict_proba(test_df.drop(['label'],axis=1))[:,1]
-  label_df=pd.DataFrame(labels,index=test_df.index.values,columns=l_list)
-  label_df['label']=test_df['label']
-
-  #save model data
-  label_df.to_csv('Model Data/Binary Model/binary_classifier_probs_'+fil_id+'.csv',mode='w')
-
-  return label_df,m_list,pca
-
-def logistic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Single/',fil_id='0',raw=False,r_state=1):
+def classic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Mixed/',fil_id='0',raw=False,r_state=1,mtype=r'Logistic'):
   """Trains a logistic regression model, one for each label in the data set
   found in fin_path and tests against data in the testin_path
 
@@ -207,27 +179,32 @@ def logistic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Dat
     testin_path: string, path to folder with the test data
     raw: boolean, True if the input is raw data, false if it has been Preprocessed
     r_state: int, random seed value
+    mtype: string, type of model - 'Logistic' for logistic regression or 'SVC'
+    for the SVC model
 
   Returns:
-    Tuple of objects in the following order: DataFrame of predicted labels, a
-    logistic regression model, a list of trained PCA models
+    Tuple of objects in the following order: A logistic regression model, a
+    trained PCA model
   """
 
   #get the current working path to provide a place to save the model data
-  save_path=make_model_dir(fil_id,r'Logistic')
+  save_path=make_model_dir(fil_id,mtype)
 
   #train the models for testing
-  lmodel,y,pca=define_model(fin_path,fil_id,save_path,r'Logistic')
+  y,cmodel,pca=define_model(fin_path,fil_id,save_path,mtype)
 
   #import test data, perform pca, re-associate labels
-  test_df=prep_test(testin_path,r_state,raw,pca)
+  test_df=prep_test(pca,testin_path,r_state,raw)
 
   #test the model
-  labels=lmodel.predict_proba(test_df.drop(['label'],axis=1))
+  try:
+    labels=cmodel.predict_proba(test_df.drop(['label'],axis=1))
+  except:
+    labels=cmodel.decision_function(test_df.drop(['label'],axis=1))
   label_df=pd.DataFrame(labels,index=test_df.index.values,columns=y)
   label_df['label']=test_df['label']
 
   #save model data
-  label_df.to_csv('Model Data/Logistic/logistic_regression_probs_'+fil_id+'.csv',mode='w')
+  label_df.to_csv('Model Data/'+mtype+'/probs_'+fil_id+'.csv',mode='w')
 
-  return label_df,lmodel,pca
+  return label_df,cmodel,pca
