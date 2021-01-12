@@ -136,7 +136,7 @@ def raw_processing(df_ls,fname_ls,fin_path):
 
   return df_ls
 
-def splitdata(X,dev_size=0.2,r_state=1):
+def splitdata(df,dev_size=0.2,r_state=1):
   """splits X values from y values and returns tuple of DataFrames from sklearn
   train_test_split
 
@@ -149,7 +149,7 @@ def splitdata(X,dev_size=0.2,r_state=1):
   Returns:
     Tuple of 4 DataFrames from 'X' split using sklearn train_test_split
   """
-
+  X=df.copy()
   #separate y from X
   y=X[X.columns[-1]]
   X.drop(X.columns[-1],axis=1,inplace=True)
