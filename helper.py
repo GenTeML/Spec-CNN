@@ -116,7 +116,15 @@ def raw_processing(df_ls,fname_ls,fin_path):
 
     #separate the labels
     temp_labels=temp_df['label']
-    temp_df.drop(columns=['label'],inplace=True)
+
+    #drop any column names that can't be converted into floats
+    drop_cols=[]
+    for i in temp_df.columns.values: 
+      try:
+        float(i)
+      except:
+        drop_cols.append(i)
+    temp_df.drop(columns=drop_cols,inplace=True)
 
     #trim to cols to [150,1100]
     trim_range=(150.,1100.)
