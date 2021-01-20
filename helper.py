@@ -25,14 +25,13 @@ def fnamelsbuilder(fin_path):
   return [f for f in listdir(fin_path) if isfile(join(fin_path,f))]
 
 def peakscleaning(df):
-  """Cleaning for peaks data - drop any rows containing NA, scale features
+  """Cleaning for peaks data - drop any rows containing NA
 
   Args:
     df: a dataframe with peaks data
 
   Returns:
-    DataFrame of peaks data with no NA values, features scaled with sklearn
-    preprocessing.StandardScaler
+    DataFrame of peaks data with no NA values
   """
   df.dropna(inplace=True)
 
@@ -83,9 +82,6 @@ def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
   else:
     df=df_ls[0]
 
-  #remove rows with "None"s that will break the model
-  #df.dropna(axis=0,inplace=True)
-
   #if peaks data, additional cleaning
   if 'Peaks Only' in fin_path:
     df=peakscleaning(df)
@@ -119,7 +115,7 @@ def raw_processing(df_ls,fname_ls,fin_path):
 
     #drop any column names that can't be converted into floats
     drop_cols=[]
-    for i in temp_df.columns.values: 
+    for i in temp_df.columns.values:
       try:
         float(i)
       except:

@@ -172,6 +172,7 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   opt=K.optimizers.RMSprop(learning_rate=lr)
   #opt=K.optimizers.Nadam(lr)
   model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=['sparse_categorical_accuracy'])
+  model.summary()
   return model
 
 def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
@@ -304,4 +305,4 @@ def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN M
   if not fast:
     save_model(cnn_model,mout_path+fil_id)
 
-  return cnn_model
+  return cnn_model,cnn_hist,X_dev,y_dev
