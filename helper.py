@@ -86,7 +86,7 @@ def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
   if 'Peaks Only' in fin_path:
     df=peakscleaning(df)
 
-  print('Master data set shape is',df.shape,'\n\n','Master data set is\n',df)
+  #print('Master data set shape is',df.shape,'\n\n','Master data set is\n',df)
 
   #split data for processing
   if split_df:
