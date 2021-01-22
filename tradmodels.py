@@ -39,23 +39,16 @@ def train_model(X_train,y_train,mtype):
     return None
 
 def assess_model(model,X_dev,y_dev,m_label,fil_id,thresh,save_path):
-  #check model
-  print(model.score(X_dev,y_dev))
-
   try:
     preds=model.predict_proba(X_dev)
   except:
     preds=model.decision_function(X_dev)
 
-  from sklearn.metrics import confusion_matrix
-  cm=confusion_matrix(y_dev,h.dec_pred(preds,thresh))
+  plot_confusion_matrix(y_dev,np.argmax(preds,axis=1),'Confusion Matrix',save_path,m_label)
 
-  print('Model label ',m_label,'\n',cm,'\n\n\n')
-  print('Model prectictions',preds)
   output_probs=pd.DataFrame(preds,index=y_dev.index.values)
   output_probs['label']=y_dev
   output_probs.to_csv(save_path+'/'+str(m_label)+'_probs.csv',mode='w')
-  pd.DataFrame(cm).to_csv(save_path+'/'+str(m_label)+'_confmat.csv',mode='w')
 
 def run_pca(df):
   temp_df=df.drop(['label'],axis=1)
@@ -88,13 +81,13 @@ def train_model_set(fin_path,fil_id,save_path):
   #loop to create one model for each label in df
   l_list=sorted(df['label'].unique().tolist())
   for i in l_list:
-    print('in loop, label is',i,'\n\n')
+    #print('in loop, label is',i,'\n\n')
     #for label i, select the target label set and create a training and dev set
     target_df=df.loc[df['label']==i,:]
     noise_df=df.loc[df['label']!=i,:]
     X_train,X_dev,y_train,y_dev=set_split(target_df,noise_df)
     m_list.append(train_model(X_train,y_train.values.ravel(),'Binary Model'))
-    print('model trained')
+    #print('model trained')
     assess_model(m_list[-1],X_train,y_train,i,fil_id=fil_id+'_train',thresh=0.0,save_path=save_path)
     assess_model(m_list[-1],X_dev,y_dev,i,fil_id=fil_id+'_dev',thresh=0.0,save_path=save_path)
   return m_list,l_list,pca
@@ -105,6 +98,20 @@ def make_model_dir(fil_id,mtype):
   save_path=(path.join(working_dir,r'Model Data',mtype,fil_id,))
   mkdir(save_path)
   return save_path
+
+def plot_confusion_matrix(y_true, y_pred, title, save_path, m_label):
+  import matplotlib.pyplot as plt
+  import seaborn as sn
+  from sklearn.metrics import confusion_matrix
+  labels = np.arange(15) #15 is the number of labels currently
+  cm = confusion_matrix(y_true, y_pred, labels)
+  cm_df = pd.DataFrame(cm, columns = labels, index = labels)
+  cm_df.to_csv(save_path+str(m_label)+'_confmat.csv',mode='w')
+  cm_df.columns.name = 'Predicted'
+  cm_df.index.name = 'Actual'
+  sn.heatmap(cm_df, annot = True, cmap = 'Blues', fmt = 'd')
+  plt.title(title)
+  plt.show()
 
 def prep_test(pca,testin_path=r'/Data/CWT Data/Single/',r_state=1,raw=False):
   init_test_df=h.dfbuilder(testin_path,split_df=False,r_state=1,raw=raw)
@@ -166,8 +173,12 @@ def define_model(fin_path,fil_id,save_path,mtype):
 
   #train model
   tmodel=train_model(X_train,y_train,mtype)
-  assess_model(tmodel,X_train,y_train,mtype,fil_id=fil_id+'_train',thresh=0.0,save_path=save_path)
+  print('\n\nValidation\n')
   assess_model(tmodel,X_dev,y_dev,mtype,fil_id=fil_id+'_dev',thresh=0.0,save_path=save_path)
+  from sklearn.metrics import classification_report
+
+  cr = classification_report(y_test, np.argmax(model.predict(X_test), axis = -1), output_dict = True)
+  cr_df = pd.DataFrame(cr).transpose()
   return sorted(df['label'].unique().tolist()),tmodel,pca
 
 def classic_model(fin_path=r'Data/CWT Data/Single/',testin_path=r'/Data/CWT Data/Mixed/',fil_id='0',raw=False,r_state=1,mtype=r'Logistic'):
