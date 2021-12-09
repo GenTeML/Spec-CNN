@@ -76,9 +76,9 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #determine the appropriate callbacks, depening on if fast is true or false
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',id_val+'val_outputs.csv'),K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',id_val+'val_outputs.csv'),K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
   else:
-    callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0,patience=3)]
+    callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
 
   #call build_cnn and train model, output trained model
   cnn_model=build_cnn(X_train.shape,y_train.max()+1,lr,drop)
