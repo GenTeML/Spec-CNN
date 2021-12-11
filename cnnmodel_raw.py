@@ -24,21 +24,21 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     self.train=train
     self.val=val
   def on_epoch_end(self, epoch, logs=None):
-    train=r'Model Data/CNN Model/Train Outputs/'+self.train
+    train=r'Model Data/CNN Model/Raw/'+self.train
     try:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='w')
 
-    val=r'Model Data/CNN Model/Train Outputs/'+self.val
+    val=r'Model Data/CNN Model/Raw/'+self.val
     try:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
 
 def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,id_val=None):
-  '''Trains a CNN model using the predetermined architecture and returns the
-  model
+  '''
+  Trains a CNN model using the predetermined architecture and returns the model
 
   Args:
     X_train: DataFrame or ndarray of training set input features
@@ -63,10 +63,10 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
-    lr=0.0001
-    batch_size=100
+    lr=0.001
+    batch_size=500
     drop=0.55
-    epochs=10
+    epochs=5
   else:
     lr=hyperparameters[0]
     batch_size=hyperparameters[1]
@@ -171,8 +171,8 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
 
   opt=K.optimizers.RMSprop(learning_rate=lr)
   #opt=K.optimizers.Nadam(lr)
-  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=['sparse_categorical_accuracy'])
   model.summary()
+  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=['sparse_categorical_accuracy'])
   return model
 
 def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
@@ -258,6 +258,7 @@ def build_confmat(y_label,y_pred,threshold):
     A DataFrame containing the confusion matrix, the column names are the
     predicted labels while the row indices are the true labels
   '''
+  print('y_pred=',y_pred)
   _y_pred=dec_pred(y_pred,threshold)
   print('_y_pred=',_y_pred,'\n\n\ny_label=',y_label)
 

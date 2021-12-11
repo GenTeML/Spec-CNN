@@ -73,7 +73,7 @@ def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
 
   else:
     for i in fname_ls:
-      temp_df=pd.read_csv(fin_path+i,index_col=0)
+      temp_df=pd.read_csv(fin_path+i,index_col='og-idx',delim_whitespace=False)
       df_ls.append(temp_df)
 
   #create one large df
@@ -82,11 +82,12 @@ def dfbuilder(fin_path,split_df=True,dev_size=.2,r_state=1,raw=False):
   else:
     df=df_ls[0]
 
+  if not df[df.isna().any(axis=1)].empty:
+    raise ValValueError('the dataframe includes NaN values')
+
   #if peaks data, additional cleaning
   if 'Peaks Only' in fin_path:
     df=peakscleaning(df)
-
-  #print('Master data set shape is',df.shape,'\n\n','Master data set is\n',df)
 
   #split data for processing
   if split_df:
@@ -207,13 +208,10 @@ def roc_all(outputs,labels):
   Returns:
     None
   """
-  #print('outputs:\n\n',outputs)
-  #print('\n\nlabels:\n\n',labels)
   master_df=pd.DataFrame(outputs)
   roc_d={}
   master_df['label']=labels.values
   for i in range(labels.max()+1):
-    #print('target values is',i)
     if len(master_df.loc[master_df['label']==i])==0:
       continue
     roc_d[i]=plot_roc(master_df,i)

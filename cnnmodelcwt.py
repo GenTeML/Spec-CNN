@@ -24,13 +24,13 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     self.train=train
     self.val=val
   def on_epoch_end(self, epoch, logs=None):
-    train=r'Model Data/CNN Model/Train Outputs/'+self.train
+    train=r'Model Data/CNN Model/CWT/'+self.train
     try:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='w')
 
-    val=r'Model Data/CNN Model/Train Outputs/'+self.val
+    val=r'Model Data/CNN Model/CWT/'+self.val
     try:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='a')
     except:
@@ -65,9 +65,9 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
   #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
     lr=0.001
-    batch_size=100
+    batch_size=500
     drop=0.55
-    epochs=10
+    epochs=5
   else:
     lr=hyperparameters[0]
     batch_size=hyperparameters[1]
@@ -76,7 +76,9 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #determine the appropriate callbacks, depening on if fast is true or false
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',id_val+'val_outputs.csv'),K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
+                                    id_val+'val_outputs.csv'),
+              K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
   else:
     callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
 
@@ -132,22 +134,22 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   X_input=Input((X_shape[1],1))
 
   #first layer - conv, batch normalization, activation, pooling
-  nfilters=8
-  size_C=13
+  nfilters=16
+  size_C=21
   s_C=1
-  size_P=3
+  size_P=2
   X=layer_CBnAP(X_input,nfilters,size_C,s_C,size_P,'1')
 
   #second layer - conv, batch normalization, activation, pooling
-  nfilters=16
-  size_C=5
+  nfilters=32
+  size_C=11
   s_C=1
   size_P=2
   X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'2')
 
   #third layer - conv, batch normalization, activation, pooling
-  nfilters=32
-  size_C=3
+  nfilters=64
+  size_C=5
   s_C=1
   size_P=2
   X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'3')
@@ -236,7 +238,7 @@ def dec_pred(y_pred,threshold=0.95):
   import numpy as np
   probs_ls=np.amax(y_pred,axis=1)
   class_ls=np.argmax(y_pred,axis=1)
-  pred_lab=np.zeros(len(y_pred),dtype=int)
+  pred_lab=np.zeros(len(y_pred))
   for i in range(len(probs_ls)):
     if probs_ls[i]>threshold:
       pred_lab[i]=class_ls[i]
@@ -256,11 +258,9 @@ def build_confmat(y_label,y_pred,threshold):
     A DataFrame containing the confusion matrix, the column names are the
     predicted labels while the row indices are the true labels
   '''
-  import numpy as np
-
   _y_pred=dec_pred(y_pred,threshold)
 
-  mat_labels=range(max([max(y_label),max(_y_pred)])+1)
+  mat_labels=range(max([max(y_label),int(max(_y_pred))])+1)
 
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
@@ -290,7 +290,8 @@ def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Model Data/CNN m
   '''
 
   #build dataframes for all data after splitting
-  X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,split_df=True,dev_size=dev_size,r_state=r_state,raw=False)
+  X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
+                                          raw=False)
 
   #train a cnn model - v1.0
   cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
