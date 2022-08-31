@@ -1,5 +1,7 @@
 # Spec-CNN
-### The code can be compiled under any local or browser-based Python environment on Mac, Windows, or Linux. Source code and datasets are copyrighted under Creative Commons BY-NC. The latest script versions and corresponding DOIs can be found in Zenodo. 
+
+**The code can be compiled under any local or browser-based Python environment on Mac, Windows, or Linux. Source code and datasets are copyrighted under Creative Commons BY-NC. The latest script versions and corresponding DOIs can be found in [Zenodo](https://zenodo.org/badge/latestdoi/290046588
+).**
 
 ## Quickstart:
 Python files as well as Google Colaboratory Python files are available for execution. There are two basic programs to run: one using the raw Raman test and training spectra and one using the continuous wavelet transform (CWT) processed Raman test and training spectra. 
