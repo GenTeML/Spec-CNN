@@ -49,13 +49,14 @@ class cnn_model:
   selected depending on the model chosen
   '''
 
-  def __init__(self,mod_sel)
+  def __init__(self,mod_sel):
     '''
     Args:
       mod_sel: string defining which model to build; determines default 
        hyperparameters, filepaths, and structure. Options: 'cnn_raw'
     '''
     self.mod_sel = mod_sel
+    self.model = None
     self.X_train = None
     self.y_train = None
     self.X_dev = None
@@ -70,7 +71,7 @@ class cnn_model:
     self.epochs = config[self.mod_sel]['epochs']
     self.lrlu_alpha = config[self.mod_sel]['lrlu_alpha']
     self.metrics = [config[self.mod_sel]['metrics']]
-    self.threshhold = config[self.mod_sel]['test_threshold']
+    self.threshold = config[self.mod_sel]['test_threshold']
 
 
   def train_cnn_model(self,hyperparameters=None):
@@ -99,16 +100,11 @@ class cnn_model:
     '''
 
     # if no hyperparameters are set, set the defaults, otherwise extract them
-    if not hyperparameters:
-      lr=self.lr
-      batch_size=self.batch_size
-      drop=self.drop
-      epochs=self.epochs
-    else:
-      lr=hyperparameters[0]
-      batch_size=hyperparameters[1]
-      drop=hyperparameters[2]
-      epochs=hyperparameters[3]
+    if hyperparameters:
+      self.lr=hyperparameters[0]
+      self.batch_size=hyperparameters[1]
+      self.drop=hyperparameters[2]
+      self.epochs=hyperparameters[3]
 
     # initialize configured parameters for callbacks
     train_out=config[self.mod_sel]['train_log']
@@ -126,9 +122,14 @@ class cnn_model:
       callbacks=[K.callbacks.EarlyStopping(monitor=monitor,min_delta=min_delta,patience=patience)]
 
     #call build_cnn and train model, output trained model
-    cnn_model=self.build_cnn(self.X_train.shape,self.y_train.max()+1,lr,drop)
+    cnn_model=self.build_cnn(self.X_train.shape,self.y_train.max()+1)
 
-    cnn_hist=cnn_model.fit(self.X_train,self.y_train,batch_size=batch_size,epochs=epochs,validation_data=(self.X_dev,self.y_dev),callbacks=callbacks)
+    cnn_hist=cnn_model.fit(self.X_train,
+                           self.y_train,
+                           batch_size=self.batch_size,
+                           epochs=self.epochs,
+                           validation_data=(self.X_dev,self.y_dev),
+                           callbacks=callbacks)
 
     return cnn_model,cnn_hist
 
@@ -151,7 +152,7 @@ class cnn_model:
     # CONV -> BN -> RELU -> MaxPooling Block applied to X
     X_working=Conv1D(nfilters,size_C,s_C,name='conv'+lnum)(X_in)
     X_working=BatchNormalization(name='bn'+lnum)(X_working)
-    X_working=LeakyReLU(alpha=config[mod_sel]['lrlu_alpha'],name='relu'+lnum)(X_working)
+    X_working=LeakyReLU(alpha=config[self.mod_sel]['lrlu_alpha'],name='relu'+lnum)(X_working)
     X_working=MaxPooling1D(size_P,name='mpool'+lnum)(X_working)
     return X_working
 
@@ -218,7 +219,7 @@ class cnn_model:
     model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[self.mod_sel]['metrics'])
     return model
 
-  def raw_cnn_model(self,fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/Raw/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+  def raw_cnn_model(self,fin_path=None,fout_path=None,dev_size=0.2,r_state=1,hyperparameters=None,fil_id=None):
     '''calls methods to build and train a model as well as testing against the
     validation sets
 
@@ -241,26 +242,55 @@ class cnn_model:
     Returns:
       CNN model built with raw data inputs
     '''
+    if fin_path:
+      self.data_path = fin_path
+    if fout_path:
+      self.fout_path = fout_path
+    if fil_id:
+      self.id_val = fil_id
 
     #build dataframes for all data after splitting
-    X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
-                                            raw=True)
+    self.X_train,self.X_dev,self.y_train,self.y_dev=h.dfbuilder(fin_path=fin_path,
+                                                                dev_size=dev_size,
+                                                                r_state=r_state,
+                                                                raw=True)
 
     #train a cnn model - v0.01
-    cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
-    pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
+    self.model,cnn_hist=self.train_cnn_model(hyperparameters)
+    pd.DataFrame(cnn_hist.history).to_csv(self.fout_path+fil_id+'hist.csv')
 
     #test cnn model with dev set
-    test_cnn_model(cnn_model,X_dev,y_dev,test=False,threshold=threshold)
+    test_cnn_model(self.mod_sel,
+                   self.model,
+                   self.X_dev,
+                   self.y_dev,
+                   self.id_val,
+                   test=False,
+                   threshold=self.threshold,
+                   fast=self.fast)
 
     #save model
-    if not fast:
-      save_model(cnn_model,mout_path+fil_id)
+    if not self.fast:
+      self.save_model()
 
-    return cnn_model,cnn_hist,X_dev,y_dev
+    return cnn_hist
+
+  def save_model(self):
+    '''saves model data to the given output mout_path
+
+    Args:
+      model: the model history file
+      mout_path: the filepath to store the model dataframe
+
+    Returns:
+      None. Creates a file at the given filepath
+    '''
+
+    self.model.save(self.fout_path+'cnn.h5')
+    print('model saved')
 
 
-def test_cnn_model(self,model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
+def test_cnn_model(mod_sel,model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
     """
     test a trained model with given parameters, creates a csv of confusion matrix
     at Model Data/CNN Model/ 'id_val'+comfmatout.csv
@@ -296,21 +326,7 @@ def test_cnn_model(self,model,X_test,y_test,id_val='0',test=True,threshold=0.95,
       #save output weights
       pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
 
-def save_model(self,model,mout_path):
-  '''saves model data to the given output mout_path
-
-  Args:
-    model: the model history file
-    mout_path: the filepath to store the model dataframe
-
-  Returns:
-    None. Creates a file at the given filepath
-  '''
-
-  model.save(mout_path+'cnn.h5')
-  print('model saved')
-
-def dec_pred(self,y_pred,threshold=0.95):
+def dec_pred(y_pred,threshold=0.95):
   """takes prediction weights and applies a decision threshold to deterime the
   predicted class for each sample
 
@@ -332,7 +348,7 @@ def dec_pred(self,y_pred,threshold=0.95):
       pred_lab[i]=15
   return pred_lab
 
-def build_confmat(self,y_label,y_pred,threshold):
+def build_confmat(y_label,y_pred,threshold):
     '''builds the confusion matrix with labeled axes
 
     Args:
