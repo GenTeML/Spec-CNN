@@ -1,5 +1,7 @@
 .ipynb_checkpoints/
 
+env_scnn23/
+
 __pycache__/
 
 .DS_Store
