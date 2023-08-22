@@ -1,8 +1,14 @@
 .ipynb_checkpoints/
 
+env_scnn23/
+
 __pycache__/
 
+Model\ Data/
+
 .DS_Store
+
+.vscode/
 
 Testing*Notebook.ipynb
 

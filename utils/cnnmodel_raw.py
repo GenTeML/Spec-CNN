@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 '''
-Contains methods that define the model with preprocessed CWT data
+Contains methods that define the model with raw data
 '''
-import helper as h
+import utils.helper as h
+import yaml
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as K
@@ -12,29 +13,41 @@ from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization
 from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 
+with open('utils/config.yml') as file:
+  config = yaml.safe_load(file)
+
+# Selected model for configurations
+mod_sel = 'cnn_raw'
+# Output path for model data
+DATA_PATH = config[mod_sel]['data_path']
+MOUT_PATH = config[mod_sel]['mout_path']
+
 class PredictionCallback(tf.keras.callbacks.Callback):
   '''
   Callback to output list of predictions of all training and dev data to a file after each epoch
   '''
-  def __init__(self,train_data,validation_data,y_train,y_dev,train,val):
+  def __init__(self,train_data,validation_data,y_train,y_dev,train,val,data_path):
     self.validation_data=validation_data
     self.train_data=train_data
     self.y_train=y_train
     self.y_dev=y_dev
     self.train=train
     self.val=val
+    self.path=data_path
   def on_epoch_end(self, epoch, logs=None):
-    train=r'Model Data/CNN Model/CWT/'+self.train
+    train=self.path+self.train
     try:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='w')
 
-    val=r'Model Data/CNN Model/CWT/'+self.val
+    val=self.path+self.val
     try:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
+
+
 
 def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,id_val=None):
   '''
@@ -47,10 +60,9 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
     X_dev: DataFrame or ndarray of dev set input features
     y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
       same order as the X_train samples
-    hyperparameters: an array of hyperparameters in the order: lr (learning
-      rate)(default 0.001), batch size (default 100), drop (dropout rate)
-      (default 0.55), epochs (default 100) - this will be updated in a future
-      state after the current deadline (5/25/2020)
+    hyperparameters: an array of hyperparameters in the order: learning
+      rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
+      (default 0.55), epochs (default 10)
     fast: boolean. if true, then the model runs more than twice as fast but does
       not record predictions of every sample for every epoch. If False, runs
       much more slowly but creates a csv of probability weights for every sample
@@ -62,30 +74,35 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
       that model
   '''
 
-  #if no hyperparameters are set, set the defaults, otherwise extract them
+  # if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
-    lr=0.001
-    batch_size=500
-    drop=0.55
-    epochs=5
+    lr=config[mod_sel]['lr']
+    batch_size=config[mod_sel]['batch_size']
+    drop=config[mod_sel]['drop']
+    epochs=config[mod_sel]['epochs']
   else:
     lr=hyperparameters[0]
     batch_size=hyperparameters[1]
     drop=hyperparameters[2]
     epochs=hyperparameters[3]
 
-  #determine the appropriate callbacks, depening on if fast is true or false
+  # initialize configured parameters for callbacks
+  train_out=config[mod_sel]['train_log']
+  val_out=config[mod_sel]['val_log']
+  _monitor=config[mod_sel]['monitor']
+  _min_delta=config[mod_sel]['min_delta']
+  _patience=config[mod_sel]['patience']
+  
+  # determine the appropriate callbacks, depending on if fast is true or false
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
-                                    id_val+'val_outputs.csv'),
-              K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+train_out,
+                                  id_val+val_out,DATA_PATH),
+               K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
   else:
-    callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
+    callbacks=[K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
 
   #call build_cnn and train model, output trained model
   cnn_model=build_cnn(X_train.shape,y_train.max()+1,lr,drop)
-
-  mout_path=r'Data/Model Data/CWT CNN/'
 
   cnn_hist=cnn_model.fit(X_train,y_train,batch_size=batch_size,epochs=epochs,validation_data=(X_dev,y_dev),callbacks=callbacks)
 
@@ -110,7 +127,7 @@ def layer_CBnAP(X_in,nfilters,size_C,s_C,size_P,lnum):
   # CONV -> BN -> RELU -> MaxPooling Block applied to X
   X_working=Conv1D(nfilters,size_C,s_C,name='conv'+lnum)(X_in)
   X_working=BatchNormalization(name='bn'+lnum)(X_working)
-  X_working=LeakyReLU(alpha=0.3,name='relu'+lnum)(X_working)
+  X_working=LeakyReLU(alpha=config[mod_sel]['lrlu_alpha'],name='relu'+lnum)(X_working)
   X_working=MaxPooling1D(size_P,name='mpool'+lnum)(X_working)
   return X_working
 
@@ -126,8 +143,6 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   Returns:
     a compiled model as defined by this method
   '''
-  #set the output path for model data
-  mout_path=r'Data/Model Data/CWT CNN/'
 
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
@@ -173,7 +188,7 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   opt=K.optimizers.RMSprop(learning_rate=lr)
   #opt=K.optimizers.Nadam(lr)
   model.summary()
-  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=['sparse_categorical_accuracy'])
+  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[mod_sel]['metrics'])
   return model
 
 def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
@@ -189,10 +204,11 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     id_val: a string used in the file name of the outputs for identification
 
   Returns:
-    None; creates a file at the /Model Data/CNN Model/CWT/ folder
+    None; creates a file at the /Model Data/CNN Model/Raw/ folder
   """
   #predict classes for provided test set
-  y_pred=model.predict(X_test,batch_size=1)
+  _batch_size=config[mod_sel]['test_batch']
+  y_pred=model.predict(X_test,batch_size=_batch_size)
 
   #report confusion matrix
   confmat=build_confmat(y_test,y_pred,threshold)
@@ -205,7 +221,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'_validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Model Data/CNN Model/CWT/'+id_val
+    confmatout_path=DATA_PATH+id_val
 
     confmat.to_csv(confmatout_path+r'_confmat.csv')
     #save output weights
@@ -221,6 +237,7 @@ def save_model(model,mout_path):
   Returns:
     None. Creates a file at the given filepath
   '''
+
   model.save(mout_path+'cnn.h5')
   print('model saved')
 
@@ -233,7 +250,7 @@ def dec_pred(y_pred,threshold=0.95):
     threshold: the determination threshold at which the model makes a prediction
 
   Returns:
-    a 1-d array of class predictions, unknown classes are returned as class 8
+    a 1-d array of class predictions, unknown classes are returned as class 6
     """
   import numpy as np
   probs_ls=np.amax(y_pred,axis=1)
@@ -258,14 +275,16 @@ def build_confmat(y_label,y_pred,threshold):
     A DataFrame containing the confusion matrix, the column names are the
     predicted labels while the row indices are the true labels
   '''
+  print('y_pred=',y_pred)
   _y_pred=dec_pred(y_pred,threshold)
+  print('_y_pred=',_y_pred,'\n\n\ny_label=',y_label)
 
   mat_labels=range(max([max(y_label),int(max(_y_pred))])+1)
 
   from sklearn.metrics import confusion_matrix
   return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
 
-def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Model Data/CNN model/CWT/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
+def raw_cnn_model(fin_path=r'Data/Raw Data/Single/',mout_path=r'Model Data/CNN Model/Raw/',dev_size=0.2,r_state=1,hyperparameters=None,fast=True,fil_id='0',threshold=.98):
   '''calls methods to build and train a model as well as testing against the
   validation sets
 
@@ -286,14 +305,14 @@ def cwt_cnn_model(fin_path=r'Data/CWT Data/Single/',mout_path=r'Model Data/CNN m
     threshold: decision threshold for labeling
 
   Returns:
-    CNN model built with preprocessed CWT data inputs
+    CNN model built with raw data inputs
   '''
 
   #build dataframes for all data after splitting
   X_train,X_dev,y_train,y_dev=h.dfbuilder(fin_path=fin_path,dev_size=dev_size,r_state=r_state,
-                                          raw=False)
+                                          raw=True)
 
-  #train a cnn model - v1.0
+  #train a cnn model - v0.01
   cnn_model,cnn_hist=train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters,fast,fil_id)
   pd.DataFrame(cnn_hist.history).to_csv(mout_path+fil_id+'hist.csv')
 
