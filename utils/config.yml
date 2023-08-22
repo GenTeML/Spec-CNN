@@ -32,8 +32,6 @@ cnn_raw:
   layer_4:
     units: 2048
     activation: 'tanh'
-  layer_5:
-    activation: 'softmax'
   # metrics
   metrics: 'sparse_categorical_accuracy'
   # testing

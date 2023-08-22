@@ -156,7 +156,7 @@ class cnn_model:
     X_working=MaxPooling1D(size_P,name='mpool'+lnum)(X_working)
     return X_working
 
-  def build_cnn(self,X_shape,y_shape,lr=0.001,drop=0.55):
+  def build_cnn(self,X_shape,y_shape):
     '''Defines and builds the CNN model with the given inputs
 
     Args:
@@ -170,38 +170,41 @@ class cnn_model:
     '''
 
     # Define the input placeholder as a tensor with the shape of the features
-    #this data has one-dimensional data with no channels
+    #this data has one-dimensional data with 1 channel
     X_input=Input((X_shape[1],1))
 
+
     #first layer - conv, batch normalization, activation, pooling
-    nfilters=16
-    size_C=21
-    s_C=1
-    size_P=2
-    X=layer_CBnAP(X_input,nfilters,size_C,s_C,size_P,'1')
+    nfilters=config[self.mod_sel]['layer_1']['nfilters']
+    size_C=config[self.mod_sel]['layer_1']['conv_size']
+    s_C=config[self.mod_sel]['layer_1']['conv_step']
+    size_P=config[self.mod_sel]['layer_1']['pool_size']
+    X=self.layer_CBnAP(X_input,nfilters,size_C,s_C,size_P,'1')
 
     #second layer - conv, batch normalization, activation, pooling
-    nfilters=32
-    size_C=11
-    s_C=1
-    size_P=2
-    X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'2')
+    nfilters=config[self.mod_sel]['layer_2']['nfilters']
+    size_C=config[self.mod_sel]['layer_2']['conv_size']
+    s_C=config[self.mod_sel]['layer_2']['conv_step']
+    size_P=config[self.mod_sel]['layer_2']['pool_size']
+    X=self.layer_CBnAP(X,nfilters,size_C,s_C,size_P,'2')
 
     #third layer - conv, batch normalization, activation, pooling
-    nfilters=64
-    size_C=5
-    s_C=1
-    size_P=2
-    X=layer_CBnAP(X,nfilters,size_C,s_C,size_P,'3')
+    nfilters=config[self.mod_sel]['layer_3']['nfilters']
+    size_C=config[self.mod_sel]['layer_3']['conv_size']
+    s_C=config[self.mod_sel]['layer_3']['conv_step']
+    size_P=config[self.mod_sel]['layer_3']['pool_size']
+    X=self.layer_CBnAP(X,nfilters,size_C,s_C,size_P,'3')
 
     #flatten for final layers
     X=Flatten()(X)
 
     #layer 4 - fully connected layer 1 dense,Batch normalization,activation,dropout
+    d_units = config[self.mod_sel]['layer_4']['units']
+    act_4 = config[self.mod_sel]['layer_4']['activation']
     X=Dense(2048, use_bias=False,name='dense4')(X)
     X=BatchNormalization(name='bn4')(X)
-    X=Activation("tanh",name='tanh4')(X)
-    X=Dropout(drop,name='dropout4')(X)
+    X=Activation(act_4,name=act_4+'4')(X)
+    X=Dropout(self.drop,name='dropout4')(X)
 
     #layer 5 - fully connected layer 2 dense, batch normalization, softmax output
     X=Dense(y_shape,use_bias=False,name='dense5')(X)
@@ -210,10 +213,10 @@ class cnn_model:
 
     model=Model(inputs=X_input,outputs=outputs)
 
-    opt=K.optimizers.RMSprop(learning_rate=lr)
-    #opt=K.optimizers.Nadam(lr)
+    opt=K.optimizers.RMSprop(learning_rate=self.lr)
+
     model.summary()
-    model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[mod_sel]['metrics'])
+    model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[self.mod_sel]['metrics'])
     return model
 
   def test_cnn_model(self,model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
