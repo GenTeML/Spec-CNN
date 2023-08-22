@@ -1,7 +1,7 @@
 cnn_raw: 
   # default paths and filenames
   data_path: 'Model Data/CNN Model/Raw/'
-  mout_path: 'Data/Model Data/Raw CNN/'
+  fout_path: 'Data/Model Data/Raw CNN/'
   train_log: '_train.csv'
   val_log: '_val.csv'
   # early stopping
@@ -36,7 +36,9 @@ cnn_raw:
     activation: 'softmax'
   # metrics
   metrics: 'sparse_categorical_accuracy'
+  # testing
   test_batch: 1
+  test_threshold: 0.95
 
   
 
