@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization
 from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 
-with open('config.yml') as file:
+with open('utils/config.yml') as file:
   config = yaml.safe_load(file)
 
 # Selected model for configurations
@@ -74,7 +74,7 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
       that model
   '''
 
-  #if no hyperparameters are set, set the defaults, otherwise extract them
+  # if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
     lr=config[mod_sel]['lr']
     batch_size=config[mod_sel]['batch_size']
@@ -86,13 +86,15 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
     drop=hyperparameters[2]
     epochs=hyperparameters[3]
 
-  #determine the appropriate callbacks, depening on if fast is true or false
+  # initialize configured parameters for callbacks
+  train_out=config[mod_sel]['train_log']
+  val_out=config[mod_sel]['val_log']
+  _monitor=config[mod_sel]['monitor']
+  _min_delta=config[mod_sel]['min_delta']
+  _patience=config[mod_sel]['patience']
+  
+  # determine the appropriate callbacks, depending on if fast is true or false
   if not fast:
-    train_out=config[mod_sel]['train_log']
-    val_out=config[mod_sel]['val_log']
-    _monitor=config[mod_sel]['monitor']
-    _min_delta=config[mod_sel]['min_delta']
-    _patience=config[mod_sel]['patience']
     callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+train_out,
                                   id_val+val_out,DATA_PATH),
                K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
