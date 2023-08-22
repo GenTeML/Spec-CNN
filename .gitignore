@@ -4,6 +4,8 @@ __pycache__/
 
 .DS_Store
 
+.vscode/
+
 Testing*Notebook.ipynb
 
 Data*Processing*Temp/

@@ -3,7 +3,7 @@ Contains methods that define the traditional models
 '''
 import pandas as pd
 import numpy as np
-import helper as h
+import utils.helper as h
 
 def scale_data(pk_df):
   #scale data((X-mean)/std_dev)

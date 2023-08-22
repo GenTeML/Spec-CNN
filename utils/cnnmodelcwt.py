@@ -3,7 +3,7 @@
 '''
 Contains methods that define the model with preprocessed CWT data
 '''
-import helper as h
+import utils.helper as h
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as K

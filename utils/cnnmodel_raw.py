@@ -3,7 +3,8 @@
 '''
 Contains methods that define the model with raw data
 '''
-import helper as h
+import utils.helper as h
+import yaml
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as K
@@ -11,6 +12,15 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Flatten, Conv1D, LeakyReLU
 from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
+
+with open('config.yml') as file:
+  config = yaml.safe_load(file)
+
+# Selected model for configurations
+mod_sel = 'cnn_raw'
+# Output path for model data
+DATA_PATH = config[mod_sel]['data_path']
+MOUT_PATH = config[mod_sel]['mout_path']
 
 class PredictionCallback(tf.keras.callbacks.Callback):
   '''
@@ -23,14 +33,15 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     self.y_dev=y_dev
     self.train=train
     self.val=val
+    self.path=DATA_PATH
   def on_epoch_end(self, epoch, logs=None):
-    train=r'Model Data/CNN Model/Raw/'+self.train
+    train=self.path+self.train
     try:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.train_data),index=self.y_train.index).to_csv(train,mode='w')
 
-    val=r'Model Data/CNN Model/Raw/'+self.val
+    val=self.path+self.val
     try:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='a')
     except:
@@ -63,10 +74,10 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #if no hyperparameters are set, set the defaults, otherwise extract them
   if not hyperparameters:
-    lr=0.001
-    batch_size=500
-    drop=0.55
-    epochs=5
+    lr=config[mod_sel]['lr']
+    batch_size=config[mod_sel]['batch_size']
+    drop=config[mod_sel]['drop']
+    epochs=config[mod_sel]['epochs']
   else:
     lr=hyperparameters[0]
     batch_size=hyperparameters[1]
@@ -75,16 +86,19 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
 
   #determine the appropriate callbacks, depening on if fast is true or false
   if not fast:
-    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+'train_outputs.csv',
-                                  id_val+'val_outputs.csv'),
-               K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
+    train_out=config[mod_sel]['train_log']
+    val_out=config[mod_sel]['val_log']
+    _monitor=config[mod_sel]['monitor']
+    _min_delta=config[mod_sel]['min_delta']
+    _patience=config[mod_sel]['patience']
+    callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+train_out,
+                                  id_val+val_out),
+               K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
   else:
-    callbacks=[K.callbacks.EarlyStopping(monitor='val_loss',min_delta=0.001,patience=3)]
+    callbacks=[K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
 
   #call build_cnn and train model, output trained model
   cnn_model=build_cnn(X_train.shape,y_train.max()+1,lr,drop)
-
-  mout_path=r'Data/Model Data/Raw CNN/'
 
   cnn_hist=cnn_model.fit(X_train,y_train,batch_size=batch_size,epochs=epochs,validation_data=(X_dev,y_dev),callbacks=callbacks)
 
@@ -109,7 +123,7 @@ def layer_CBnAP(X_in,nfilters,size_C,s_C,size_P,lnum):
   # CONV -> BN -> RELU -> MaxPooling Block applied to X
   X_working=Conv1D(nfilters,size_C,s_C,name='conv'+lnum)(X_in)
   X_working=BatchNormalization(name='bn'+lnum)(X_working)
-  X_working=LeakyReLU(alpha=0.3,name='relu'+lnum)(X_working)
+  X_working=LeakyReLU(alpha=config[mod_sel]['lrlu_alpha'],name='relu'+lnum)(X_working)
   X_working=MaxPooling1D(size_P,name='mpool'+lnum)(X_working)
   return X_working
 
@@ -125,8 +139,6 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   Returns:
     a compiled model as defined by this method
   '''
-  #set the output path for model data
-  mout_path=r'Data/Model Data/Raw CNN/'
 
   # Define the input placeholder as a tensor with the shape of the features
   #this data has one-dimensional data with no channels
@@ -172,7 +184,7 @@ def build_cnn(X_shape,y_shape,lr=0.001,drop=0.55):
   opt=K.optimizers.RMSprop(learning_rate=lr)
   #opt=K.optimizers.Nadam(lr)
   model.summary()
-  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=['sparse_categorical_accuracy'])
+  model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[mod_sel]['metrics'])
   return model
 
 def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
@@ -191,7 +203,8 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     None; creates a file at the /Model Data/CNN Model/Raw/ folder
   """
   #predict classes for provided test set
-  y_pred=model.predict(X_test,batch_size=1)
+  _batch_size=config[mod_sel]['test_batch']
+  y_pred=model.predict(X_test,batch_size=_batch_size)
 
   #report confusion matrix
   confmat=build_confmat(y_test,y_pred,threshold)
@@ -204,7 +217,7 @@ def test_cnn_model(model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=
     else:
       id_val=id_val+'_validation'
     #save confusion matrix as csv to drive
-    confmatout_path=r'Model Data/CNN Model/Raw/'+id_val
+    confmatout_path=DATA_PATH+id_val
 
     confmat.to_csv(confmatout_path+r'_confmat.csv')
     #save output weights

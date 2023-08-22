@@ -1,0 +1,43 @@
+cnn_raw: 
+  # default paths and filenames
+  data_path: 'Model Data/CNN Model/Raw/'
+  mout_path: 'Data/Model Data/Raw CNN/'
+  # early stopping
+  monitor: 'val_loss'
+  min_delta: 0.001
+  patience: 3
+  # default hyperparameters
+  lr: 0.001
+  batch_size: 500
+  drop: 0.55
+  epochs: 5
+  lrlu_alpha: 0.3
+  layer_1:
+    nfilters: 16
+    conv_size: 21
+    conv_step: 1
+    pool_size: 2
+  layer_2:
+    nfilters: 32
+    conv_size: 11
+    conv_step: 1
+    pool_size: 1
+  layer_3:
+    nfilters: 64
+    conv_size: 5
+    conv_step: 1
+    pool_size: 2
+  layer_4:
+    units: 2048
+    activation: 'tanh'
+  layer_5:
+    activation: 'softmax'
+  # metrics
+  metrics: 'sparse_catagorical_accuracy'
+  test_batch: 1
+
+  
+
+  
+
+
