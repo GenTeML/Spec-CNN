@@ -26,14 +26,14 @@ class PredictionCallback(tf.keras.callbacks.Callback):
   '''
   Callback to output list of predictions of all training and dev data to a file after each epoch
   '''
-  def __init__(self,train_data,validation_data,y_train,y_dev,train,val):
+  def __init__(self,train_data,validation_data,y_train,y_dev,train,val,data_path):
     self.validation_data=validation_data
     self.train_data=train_data
     self.y_train=y_train
     self.y_dev=y_dev
     self.train=train
     self.val=val
-    self.path=DATA_PATH
+    self.path=data_path
   def on_epoch_end(self, epoch, logs=None):
     train=self.path+self.train
     try:
@@ -46,6 +46,8 @@ class PredictionCallback(tf.keras.callbacks.Callback):
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='a')
     except:
       pd.DataFrame(data=self.model.predict(self.validation_data),index=self.y_dev.index).to_csv(val,mode='w')
+
+
 
 def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,id_val=None):
   '''
@@ -92,7 +94,7 @@ def train_cnn_model(X_train,y_train,X_dev,y_dev,hyperparameters=None,fast=True,i
     _min_delta=config[mod_sel]['min_delta']
     _patience=config[mod_sel]['patience']
     callbacks=[PredictionCallback(X_train,X_dev,y_train,y_dev,id_val+train_out,
-                                  id_val+val_out),
+                                  id_val+val_out,DATA_PATH),
                K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
   else:
     callbacks=[K.callbacks.EarlyStopping(monitor=_monitor,min_delta=_min_delta,patience=_patience)]
