@@ -4,6 +4,8 @@ env_scnn23/
 
 __pycache__/
 
+Model\ Data/
+
 .DS_Store
 
 .vscode/
