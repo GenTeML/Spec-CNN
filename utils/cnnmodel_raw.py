@@ -219,7 +219,7 @@ class cnn_model:
     model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),optimizer=opt,metrics=config[self.mod_sel]['metrics'])
     return model
 
-  def raw_cnn_model(self,fin_path=None,fout_path=None,dev_size=0.2,r_state=1,hyperparameters=None,fil_id=None):
+  def raw_cnn_model(self,fin_path=None,fout_path=None,dev_size=0.2,r_state=1,hyperparameters=None,fast=None,threshold=None,fil_id=None):
     '''calls methods to build and train a model as well as testing against the
     validation sets
 
@@ -248,9 +248,15 @@ class cnn_model:
       self.fout_path = fout_path
     if fil_id:
       self.id_val = fil_id
+    if fast:
+      self.fast = fast
+    if threshold:
+      self.threshold = threshold
+    if fil_id:
+      self.id_val = fil_id
 
     #build dataframes for all data after splitting
-    self.X_train,self.X_dev,self.y_train,self.y_dev=h.dfbuilder(fin_path=fin_path,
+    self.X_train,self.X_dev,self.y_train,self.y_dev=h.dfbuilder(fin_path=self.data_path,
                                                                 dev_size=dev_size,
                                                                 r_state=r_state,
                                                                 raw=True)

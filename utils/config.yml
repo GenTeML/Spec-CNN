@@ -1,6 +1,6 @@
 cnn_raw: 
   # default paths and filenames
-  data_path: 'Model Data/CNN Model/Raw/'
+  data_path: 'Data/Raw Data/Single/'
   fout_path: 'Data/Model Data/Raw CNN/'
   train_log: '_train.csv'
   val_log: '_val.csv'
