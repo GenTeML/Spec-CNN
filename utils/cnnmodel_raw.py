@@ -63,6 +63,7 @@ class cnn_model:
     self.y_dev = None
     self.id_val = '0_'
     self.fast = True
+    self.test = False
     self.data_path = config[self.mod_sel]['data_path']
     self.fout_path = config[self.mod_sel]['fout_path']
     self.lr = config[self.mod_sel]['lr']
@@ -266,14 +267,14 @@ class cnn_model:
     pd.DataFrame(cnn_hist.history).to_csv(self.fout_path+fil_id+'hist.csv')
 
     #test cnn model with dev set
-    test_cnn_model(self.mod_sel,
-                   self.model,
-                   self.X_dev,
-                   self.y_dev,
-                   self.id_val,
-                   test=False,
-                   threshold=self.threshold,
-                   fast=self.fast)
+    self.test = test_model(self.model,
+                           self.mod_sel,
+                           self.fout_path,
+                           self.X_dev,
+                           self.y_dev,
+                           self.id_val,
+                           threshold=self.threshold,
+                           fast=self.fast)
 
     #save model
     if not self.fast:
@@ -296,81 +297,107 @@ class cnn_model:
     print('model saved')
 
 
-def test_cnn_model(mod_sel,model,X_test,y_test,id_val='0',test=True,threshold=0.95,fast=False):
-    """
-    test a trained model with given parameters, creates a csv of confusion matrix
-    at Model Data/CNN Model/ 'id_val'+comfmatout.csv
+class test_model:
 
-    Args:
-      model: a trained keras model used to predict the categories of the test set
-      X_test: a DataFrame or ndarray of sample features sets for testing
-      y_test: a DataFrame or Series of sample labels the X_test feature set - must
-        be in the same order as the X_test feature set
-      id_val: a string used in the file name of the outputs for identification
+  def __init__(self,model,mod_sel,fout_path,X_test,y_test,id_val,threshold,fast):
+    self.model=model
+    self.mod_sel=mod_sel
+    self.X_test=X_test
+    self.y_test=y_test
+    self.y_pred=None
+    self.id_val=id_val
+    self.threshold=threshold
+    self.fast=fast
+    self.batch_size=config[self.mod_sel]['test_batch']
+    self.fout_path=fout_path
 
-    Returns:
-      None; creates a file at the /Model Data/CNN Model/Raw/ folder
-    """
+    self.y_pred=self.run_pred()
+    self.y_dec_pred=self.dec_pred()
+
+
+  def run_pred(self,batch_size=None):
+    if batch_size:
+      self.batch_size=batch_size
     #predict classes for provided test set
-    _batch_size=config[mod_sel]['test_batch']
-    y_pred=model.predict(X_test,batch_size=_batch_size)
+    self.y_pred=self.model.predict(self.X_test,batch_size=self.batch_size)
+    return self.y_pred
 
-    #report confusion matrix
-    confmat=build_confmat(y_test,y_pred,threshold)
-    display(confmat)
+  def test_cnn_model(self,test=True,threshold=None,fast=None):
+      """
+      test a trained model with given parameters, creates a csv of confusion matrix
+      at Model Data/CNN Model/ 'id_val'+comfmatout.csv
 
-    #if fast is not True, save the confusion matrix as either test or validation
-    if not fast:
-      if test:
-        id_val=id_val+'_test'
-      else:
-        id_val=id_val+'_validation'
-      #save confusion matrix as csv to drive
-      confmatout_path=DATA_PATH+id_val
+      Args:
+        model: a trained keras model used to predict the categories of the test set
+        X_test: a DataFrame or ndarray of sample features sets for testing
+        y_test: a DataFrame or Series of sample labels the X_test feature set - must
+          be in the same order as the X_test feature set
+        id_val: a string used in the file name of the outputs for identification
 
-      confmat.to_csv(confmatout_path+r'_confmat.csv')
-      #save output weights
-      pd.DataFrame(data=model.predict(X_test),index=y_test.index.values).to_csv(confmatout_path+'_probs.csv')
+      Returns:
+        None; creates a file at the /Model Data/CNN Model/Raw/ folder
+      """
+      if threshold:
+        self.threshold=threshold
 
-def dec_pred(y_pred,threshold=0.95):
-  """takes prediction weights and applies a decision threshold to deterime the
-  predicted class for each sample
+      if fast:
+        self.fast=fast
 
-  Args:
-    y_pred: an ndarray of prediction weights for a set of samples
-    threshold: the determination threshold at which the model makes a prediction
+      #report confusion matrix
+      confmat=self.build_confmat()
+      display(confmat)
 
-  Returns:
-    a 1-d array of class predictions, unknown classes are returned as class 6
-    """
-  import numpy as np
-  probs_ls=np.amax(y_pred,axis=1)
-  class_ls=np.argmax(y_pred,axis=1)
-  pred_lab=np.zeros(len(y_pred))
-  for i in range(len(probs_ls)):
-    if probs_ls[i]>threshold:
-      pred_lab[i]=class_ls[i]
-    else:
-      pred_lab[i]=15
-  return pred_lab
+      #if fast is not True, save the confusion matrix as either test or validation
+      if not fast:
+        if test:
+          file_n=self.id_val+'_test'
+        else:
+          file_n=self.id_val+'_validation'
+        #save confusion matrix as csv to drive
+        confmatout_path=self.fout_path+file_n
 
-def build_confmat(y_label,y_pred,threshold):
-    '''builds the confusion matrix with labeled axes
+        confmat.to_csv(confmatout_path+r'_confmat.csv')
+        #save output weights
+        pd.DataFrame(data=self.model.predict(self.X_test),index=self.y_test.index.values).to_csv(confmatout_path+'_probs.csv')
+
+  def dec_pred(self):
+    """takes prediction weights and applies a decision threshold to deterime the
+    predicted class for each sample
 
     Args:
-      y_label: a list of true labels for each sample
-      y_pred: a list of predicted labels for each samples
-      threshhold: the decision threshhold for the mat_labels
+      y_pred: an ndarray of prediction weights for a set of samples
+      threshold: the determination threshold at which the model makes a prediction
 
     Returns:
-      A DataFrame containing the confusion matrix, the column names are the
-      predicted labels while the row indices are the true labels
-    '''
-    print('y_pred=',y_pred)
-    _y_pred=dec_pred(y_pred,threshold)
-    print('_y_pred=',_y_pred,'\n\n\ny_label=',y_label)
+      a 1-d array of class predictions, unknown classes are returned as class 6
+      """
+    import numpy as np
+    probs_ls=np.amax(self.y_pred,axis=1)
+    class_ls=np.argmax(self.y_pred,axis=1)
+    pred_lab=np.zeros(len(self.y_pred))
+    for i in range(len(probs_ls)):
+      if probs_ls[i]>self.threshold:
+        pred_lab[i]=class_ls[i]
+      else:
+        pred_lab[i]=15
+    return pred_lab
 
-    mat_labels=range(max([max(y_label),int(max(_y_pred))])+1)
+  def build_confmat(self):
+      '''builds the confusion matrix with labeled axes
 
-    from sklearn.metrics import confusion_matrix
-    return pd.DataFrame(confusion_matrix(y_label,_y_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
+      Args:
+        y_label: a list of true labels for each sample
+        y_pred: a list of predicted labels for each samples
+        threshhold: the decision threshhold for the mat_labels
+
+      Returns:
+        A DataFrame containing the confusion matrix, the column names are the
+        predicted labels while the row indices are the true labels
+      '''
+      print('y_pred=',self.y_pred)
+      print('y_dec_pred=',self.y_dec_pred,'\n\n\ny_label=',self.y_test)
+
+      mat_labels=range(max([max(self.y_test),int(max(self.y_dec_pred))])+1)
+
+      from sklearn.metrics import confusion_matrix
+      return pd.DataFrame(confusion_matrix(self.y_test,self.y_dec_pred,mat_labels),index=['true_{0}'.format(i) for i in mat_labels],columns=['pred_{0}'.format(i) for i in mat_labels])
