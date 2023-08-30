@@ -5,7 +5,6 @@ Contains methods that define the model with raw data
 """
 import yaml
 import pandas as pd
-from numpy.typing import ArrayLike
 import tensorflow as tf
 import tensorflow.keras as K
 from tensorflow.keras.layers import (
