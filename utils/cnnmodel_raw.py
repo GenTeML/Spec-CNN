@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+# TODO: update all docstrings
 """
 Contains methods that define the model with raw data
 """
@@ -20,6 +21,7 @@ from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 import utils.helper as h
 
+# TODO: specify encoding
 with open("utils/config.yml") as file:
     config = yaml.safe_load(file)
 
@@ -29,9 +31,11 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     Callback to output list of predictions of all training and dev data to a file after each epoch
     """
 
+    # TODO: add typehints for intialized values
     def __init__(
         self, train_data, validation_data, y_train, y_dev, train, val, fout_path
     ):
+        super().__init__()
         self.validation_data = validation_data
         self.train_data = train_data
         self.y_train = y_train
@@ -178,6 +182,7 @@ class CnnModel:
             ]
 
         # call build_cnn and train model, output trained model
+        # TODO: typehint outputs from dfbuilder
         cnn_model = self.build_cnn(self.X_train.shape, self.y_train.max() + 1)
 
         cnn_hist = cnn_model.fit(
@@ -191,6 +196,8 @@ class CnnModel:
 
         return cnn_model, cnn_hist
 
+    # TODO: update method name and references
+    # TODO: conform parameter names to snake casing except when represents a matrix
     def layer_CBnAP(self, X_in, nfilters, size_C, s_C, size_P, lnum):
         """Defines one set of convolutional layers with a Convolution,
         BatchNormalization, LeakyReLU activation, and MaxPooling1D
@@ -216,6 +223,7 @@ class CnnModel:
         X_working = MaxPooling1D(size_P, name="mpool" + lnum)(X_working)
         return X_working
 
+    # TODO: conform variables to snake case except when represents a matrix
     def build_cnn(self, X_shape, y_shape):
         """Defines and builds the CNN model with the given inputs
 
@@ -306,12 +314,13 @@ class CnnModel:
           CNN model built with raw data inputs
         """
 
-        # train a cnn model - v0.01
-        self.model, cnn_hist = self.train_cnn_model(hyperparameters)
-        pd.DataFrame(cnn_hist.history).to_csv(self.fout_path + fil_id + "hist.csv")
+        # train a cnn model
+        # TODO: typehint outputs from train_cnn_model
+        self.model, cnn_hist = self.train_cnn_model()
+        pd.DataFrame(cnn_hist.history).to_csv(self.fout_path + self.id_val + "hist.csv")
 
         # test cnn model with dev set
-        self.test = test_model(
+        self.test = TestModel(
             self.model,
             self.mod_sel,
             self.fout_path,
@@ -351,7 +360,6 @@ class TestModel:
         self.mod_sel = mod_sel
         self.X_test = X_test
         self.y_test = y_test
-        self.y_pred = None
         self.id_val = id_val
         self.threshold = threshold
         self.fast = fast
