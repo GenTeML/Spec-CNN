@@ -72,12 +72,10 @@ class CnnModel:
     def __init__(
         self,
         mod_sel,
-        X_train: pd.DataFrame,
-        y_train: pd.Series,
-        X_dev=None,
-        y_dev=None,
+        data_path=None,
         id_val="0_",
         fast=True,
+        dev_size=None,
         hyperparameters={},
     ):
         """
@@ -86,10 +84,7 @@ class CnnModel:
            hyperparameters, filepaths, and structure. Options: 'cnn_raw'
         """
         self.mod_sel = mod_sel
-        self.X_train = X_train
-        self.y_train = y_train
-        self.X_dev = X_dev
-        self.y_dev = y_dev
+
         self.id_val = id_val
         self.fast = fast
 
@@ -103,12 +98,23 @@ class CnnModel:
         self.lrlu_alpha = config[self.mod_sel]["lrlu_alpha"]
         self.metrics = [config[self.mod_sel]["metrics"]]
         self.threshold = config[self.mod_sel]["test_threshold"]
+        self.dev_size = config[self.dev_size]["dev_size"]
 
-        self.data_path = config[self.mod_sel]["data_path"]
+        self.data_path = data_path if data_path else config[self.mod_sel]["data_path"]
         self.fout_path = config[self.mod_sel]["fout_path"]
+        self.r_state = config[self.mod_sel]["r_state"]
+        self.dev_size = dev_size if dev_size else config[self.mod_sel]["dev_size"]
 
-        self.model = None
-        self.test = None
+        # build dataframes for all data after splitting
+        self.X_train, self.X_dev, self.y_train, self.y_dev = h.dfbuilder(
+            fin_path=self.data_path,
+            dev_size=self.dev_size,
+            r_state=self.r_state,
+            raw=config[mod_sel]["is_raw"],
+        )
+
+        self.model: Model
+        self.test: TestModel
 
     def train_cnn_model(self, hyperparameters=None):
         """
@@ -277,17 +283,7 @@ class CnnModel:
         )
         return model
 
-    def raw_cnn_model(
-        self,
-        fin_path=None,
-        fout_path=None,
-        dev_size=0.2,
-        r_state=1,
-        hyperparameters=None,
-        fast=None,
-        threshold=None,
-        fil_id=None,
-    ):
+    def raw_cnn_model(self):
         """calls methods to build and train a model as well as testing against the
         validation sets
 
@@ -310,23 +306,6 @@ class CnnModel:
         Returns:
           CNN model built with raw data inputs
         """
-        if fin_path:
-            self.data_path = fin_path
-        if fout_path:
-            self.fout_path = fout_path
-        if fil_id:
-            self.id_val = fil_id
-        if fast:
-            self.fast = fast
-        if threshold:
-            self.threshold = threshold
-        if fil_id:
-            self.id_val = fil_id
-
-        # build dataframes for all data after splitting
-        self.X_train, self.X_dev, self.y_train, self.y_dev = h.dfbuilder(
-            fin_path=self.data_path, dev_size=dev_size, r_state=r_state, raw=True
-        )
 
         # train a cnn model - v0.01
         self.model, cnn_hist = self.train_cnn_model(hyperparameters)
