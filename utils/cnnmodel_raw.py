@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # TODO: update all docstrings
+# TODO: move all imports to top level
+
 """
 Contains methods that define the model with raw data
 """
@@ -44,7 +46,8 @@ class PredictionCallback(tf.keras.callbacks.Callback):
         self.val = val
         self.path = fout_path
 
-    def on_epoch_end(self, epoch, logs=None):
+    # TODO: should not be done with try/except, do proper check
+    def on_epoch_end(self):
         train = self.path + self.train
         try:
             pd.DataFrame(
@@ -79,7 +82,7 @@ class CnnModel:
         id_val="0_",
         fast=True,
         dev_size=None,
-        hyperparameters={},
+        hyperparameters=None,
     ):
         """
         Args:
@@ -90,6 +93,8 @@ class CnnModel:
 
         self.id_val = id_val
         self.fast = fast
+
+        hyperparameters = hyperparameters if hyperparameters else {}
 
         self.lr = hyperparameters.get("lr", config[self.mod_sel]["lr"])
         self.batch_size = hyperparameters.get(
@@ -148,7 +153,7 @@ class CnnModel:
         if hyperparameters:
             self.lr = hyperparameters[0]
             self.batch_size = hyperparameters[1]
-            self.drop = hyperparameters[2]
+            self.drop_rate = hyperparameters[2]
             self.epochs = hyperparameters[3]
 
         # initialize configured parameters for callbacks
